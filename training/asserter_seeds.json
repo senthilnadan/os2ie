@@ -1,0 +1,182 @@
+[
+  {
+    "id": "01a",
+    "category": "file_exists",
+    "milestone": ["file_exists"],
+    "state": { "task": "Check whether hello.py exists in /tmp/os2ie_sandbox", "file_path": "/tmp/os2ie_sandbox/hello.py", "is_present": true },
+    "expected": { "ok": true, "reason": "is_present=true confirms file existence was checked and the file exists" }
+  },
+  {
+    "id": "01b",
+    "category": "file_exists",
+    "milestone": ["file_exists"],
+    "state": { "task": "Check whether hello.py exists in /tmp/os2ie_sandbox", "file_path": "/tmp/os2ie_sandbox/hello.py", "is_present": false },
+    "expected": { "ok": true, "reason": "is_present=false is a valid result — the check ran and the answer is no" }
+  },
+  {
+    "id": "01c",
+    "category": "file_exists",
+    "milestone": ["file_exists"],
+    "state": { "task": "Check whether hello.py exists in /tmp/os2ie_sandbox", "file_path": "/tmp/os2ie_sandbox/hello.py" },
+    "expected": { "ok": false, "reason": "no existence check result in state — tool did not run or output was not merged" }
+  },
+  {
+    "id": "02a",
+    "category": "read_file",
+    "milestone": ["file_contents"],
+    "state": { "task": "Read the contents of README.md", "file_path": "/tmp/os2ie_sandbox/README.md", "text": "# Hello World\nThis is the readme." },
+    "expected": { "ok": true, "reason": "text key contains file contents — milestone achieved" }
+  },
+  {
+    "id": "02b",
+    "category": "read_file",
+    "milestone": ["file_contents"],
+    "state": { "task": "Read the contents of README.md", "file_path": "/tmp/os2ie_sandbox/README.md", "text": "" },
+    "expected": { "ok": true, "reason": "text key is present — empty file is a valid read result" }
+  },
+  {
+    "id": "02c",
+    "category": "read_file",
+    "milestone": ["file_contents"],
+    "state": { "task": "Read the contents of README.md", "file_path": "/tmp/os2ie_sandbox/README.md" },
+    "expected": { "ok": false, "reason": "no text or file_contents key in state — read did not complete" }
+  },
+  {
+    "id": "03a",
+    "category": "create_file",
+    "milestone": ["file_created"],
+    "state": { "task": "Create notes.txt with content 'first note'", "file_path": "/tmp/os2ie_sandbox/notes.txt", "content": "first note", "success": true },
+    "expected": { "ok": true, "reason": "success=true confirms file was created" }
+  },
+  {
+    "id": "03b",
+    "category": "create_file",
+    "milestone": ["file_created"],
+    "state": { "task": "Create notes.txt with content 'first note'", "file_path": "/tmp/os2ie_sandbox/notes.txt", "content": "first note", "success": false },
+    "expected": { "ok": false, "reason": "success=false means file creation did not complete" }
+  },
+  {
+    "id": "04a",
+    "category": "delete_file",
+    "milestone": ["file_deleted"],
+    "state": { "task": "Delete temp.txt", "file_path": "/tmp/os2ie_sandbox/temp.txt", "deleted": true },
+    "expected": { "ok": true, "reason": "deleted=true confirms the file was removed" }
+  },
+  {
+    "id": "04b",
+    "category": "delete_file",
+    "milestone": ["file_deleted"],
+    "state": { "task": "Delete temp.txt", "file_path": "/tmp/os2ie_sandbox/temp.txt", "deleted": false },
+    "expected": { "ok": true, "reason": "deleted=false means file was not present — delete intent is satisfied, file is gone either way" }
+  },
+  {
+    "id": "04c",
+    "category": "delete_file",
+    "milestone": ["file_deleted"],
+    "state": { "task": "Delete temp.txt", "file_path": "/tmp/os2ie_sandbox/temp.txt" },
+    "expected": { "ok": false, "reason": "no deleted key in state — delete tool did not run" }
+  },
+  {
+    "id": "05a",
+    "category": "shell_command",
+    "milestone": ["python_version"],
+    "state": { "task": "Check the Python version installed on this system", "command": "python3 --version", "stdout": "", "stderr": "Python 3.11.4\n", "return_code": 0 },
+    "expected": { "ok": true, "reason": "return_code=0 and stderr contains Python version string — milestone achieved" }
+  },
+  {
+    "id": "05b",
+    "category": "shell_command",
+    "milestone": ["python_version"],
+    "state": { "task": "Check the Python version installed on this system", "command": "python3 --version", "stdout": "Python 3.14.3\n", "stderr": "", "return_code": 0 },
+    "expected": { "ok": true, "reason": "stdout contains Python version — milestone achieved" }
+  },
+  {
+    "id": "05c",
+    "category": "shell_command",
+    "milestone": ["python_version"],
+    "state": { "task": "Check the Python version installed on this system", "command": "python3 --version", "stdout": "", "stderr": "python3: command not found\n", "return_code": 127 },
+    "expected": { "ok": false, "reason": "return_code=127 and stderr shows command not found — python version could not be determined" }
+  },
+  {
+    "id": "06a",
+    "category": "shell_nonzero",
+    "milestone": ["command_ran"],
+    "state": { "task": "Run the shell command 'exit 1'", "command": "exit 1", "stdout": "", "stderr": "", "return_code": 1 },
+    "expected": { "ok": true, "reason": "the task was to run the command — it ran and produced return_code=1 as expected" }
+  },
+  {
+    "id": "07a",
+    "category": "multi_step",
+    "milestone": ["file_read_back"],
+    "state": { "task": "Create temp.txt with content 'hello' then read it back", "file_path": "/tmp/os2ie_sandbox/temp.txt", "content": "hello", "success": true, "text": "hello" },
+    "expected": { "ok": true, "reason": "text='hello' confirms the file was created and read back successfully" }
+  },
+  {
+    "id": "07b",
+    "category": "multi_step",
+    "milestone": ["file_read_back"],
+    "state": { "task": "Create temp.txt with content 'hello' then read it back", "file_path": "/tmp/os2ie_sandbox/temp.txt", "content": "hello", "success": true },
+    "expected": { "ok": false, "reason": "success=true shows create ran but there is no text key — read step did not execute" }
+  },
+  {
+    "id": "08a",
+    "category": "multi_step",
+    "milestone": ["setup_complete"],
+    "state": { "task": "Create the directory /tmp/os2ie_sandbox/newdir then create a file inside it", "directory_path": "/tmp/os2ie_sandbox/newdir", "file_path": "/tmp/os2ie_sandbox/newdir/file.txt", "content": "hi", "created": true, "success": true },
+    "expected": { "ok": true, "reason": "created=true and success=true confirm both directory and file were created" }
+  },
+  {
+    "id": "08b",
+    "category": "multi_step",
+    "milestone": ["setup_complete"],
+    "state": { "task": "Create the directory /tmp/os2ie_sandbox/newdir then create a file inside it", "directory_path": "/tmp/os2ie_sandbox/newdir", "created": true },
+    "expected": { "ok": false, "reason": "directory was created but no file creation result in state — second step did not run" }
+  },
+  {
+    "id": "09a",
+    "category": "multi_step",
+    "milestone": ["output_saved"],
+    "state": { "task": "Run 'echo hello_from_shell' and write its stdout to /tmp/os2ie_sandbox/out.txt", "command": "echo hello_from_shell", "stdout": "hello_from_shell\n", "stderr": "", "return_code": 0, "file_path": "/tmp/os2ie_sandbox/out.txt", "content": "hello_from_shell\n", "success": true },
+    "expected": { "ok": true, "reason": "stdout captured and success=true confirms content was written to file" }
+  },
+  {
+    "id": "09b",
+    "category": "multi_step",
+    "milestone": ["output_saved"],
+    "state": { "task": "Run 'echo hello_from_shell' and write its stdout to /tmp/os2ie_sandbox/out.txt", "command": "echo hello_from_shell", "stdout": "hello_from_shell\n", "stderr": "", "return_code": 0 },
+    "expected": { "ok": false, "reason": "stdout was captured but no file write result in state — second step did not run" }
+  },
+  {
+    "id": "10a",
+    "category": "failure_case",
+    "milestone": ["file_contents"],
+    "state": { "task": "Read the contents of /tmp/os2ie_sandbox/ghost.txt", "file_path": "/tmp/os2ie_sandbox/ghost.txt" },
+    "expected": { "ok": false, "reason": "no text or file_contents key in state — file read did not succeed, file likely does not exist" }
+  },
+  {
+    "id": "11a",
+    "category": "subtask",
+    "milestone": ["project_setup_complete"],
+    "state": {
+      "task": "Set up the project: create src/, create src/__init__.py, create README.md",
+      "parent_task": "Build a Python project scaffold",
+      "directory_path": "/tmp/os2ie_sandbox/src",
+      "created": true,
+      "file_path": "/tmp/os2ie_sandbox/README.md",
+      "success": true
+    },
+    "expected": { "ok": true, "reason": "directory created and README created — subtask deliverables are in state" }
+  },
+  {
+    "id": "11b",
+    "category": "subtask",
+    "milestone": ["project_setup_complete"],
+    "state": {
+      "task": "Set up the project: create src/, create src/__init__.py, create README.md",
+      "parent_task": "Build a Python project scaffold",
+      "directory_path": "/tmp/os2ie_sandbox/src",
+      "created": true
+    },
+    "expected": { "ok": false, "reason": "directory created but README and __init__.py not in state — subtask only partially completed" }
+  }
+]

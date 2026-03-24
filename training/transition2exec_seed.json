@@ -1,0 +1,811 @@
+{
+  "_note": "available_tools is sent with every request to transition2exec. It is defined once here and applies to all seeds.",
+  "available_tools": [
+    {
+      "name": "exists",
+      "description": "Check whether a file exists at the given path.",
+      "signature": {
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "is_present"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "file_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "is_present",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "list_directory",
+      "description": "List the immediate children of a directory (non-recursive).",
+      "signature": {
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "entries"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "directory_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "entries",
+          "type": "list[str]"
+        }
+      ]
+    },
+    {
+      "name": "list_directory_recursive",
+      "description": "Recursively list all files and directories under a given directory.",
+      "signature": {
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "entries"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "directory_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "entries",
+          "type": "list[str]"
+        }
+      ]
+    },
+    {
+      "name": "read_file",
+      "description": "Read the full text content of a file.",
+      "signature": {
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "text"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "file_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "name": "create_file",
+      "description": "Create a file with the given content. Parent directories are created automatically. Overwrites if exists.",
+      "signature": {
+        "inputs": [
+          "file_path",
+          "content"
+        ],
+        "outputs": [
+          "success"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "file_path",
+          "type": "str"
+        },
+        {
+          "name": "content",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "append_to_file",
+      "description": "Append text to the end of an existing file.",
+      "signature": {
+        "inputs": [
+          "file_path",
+          "content"
+        ],
+        "outputs": [
+          "success"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "file_path",
+          "type": "str"
+        },
+        {
+          "name": "content",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "success",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "delete_file",
+      "description": "Delete a single file. Returns deleted=false (not an error) if the file does not exist.",
+      "signature": {
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "deleted"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "file_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "deleted",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "copy_file",
+      "description": "Copy a file from source to destination, preserving metadata.",
+      "signature": {
+        "inputs": [
+          "source_path",
+          "destination_path"
+        ],
+        "outputs": [
+          "copied"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "source_path",
+          "type": "str"
+        },
+        {
+          "name": "destination_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "copied",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "move_file",
+      "description": "Move or rename a file.",
+      "signature": {
+        "inputs": [
+          "source_path",
+          "destination_path"
+        ],
+        "outputs": [
+          "moved"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "source_path",
+          "type": "str"
+        },
+        {
+          "name": "destination_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "moved",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "make_directory",
+      "description": "Create a directory, including any missing parent directories.",
+      "signature": {
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "created"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "directory_path",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "created",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "remove_directory",
+      "description": "Remove a directory. Set recursive=true to remove non-empty directories.",
+      "signature": {
+        "inputs": [
+          "directory_path",
+          "recursive"
+        ],
+        "outputs": [
+          "removed"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "directory_path",
+          "type": "str"
+        },
+        {
+          "name": "recursive",
+          "type": "bool"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "removed",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "run_shell_command",
+      "description": "Execute a shell command and capture its output. Available shells on this system: bash, zsh, sh. Default shell: bash. Specify the 'shell' input to override (e.g. bash, zsh, pwsh). Write command syntax appropriate for the chosen shell.",
+      "signature": {
+        "inputs": [
+          "command",
+          "working_directory",
+          "shell"
+        ],
+        "outputs": [
+          "stdout",
+          "stderr",
+          "return_code"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "command",
+          "type": "str"
+        },
+        {
+          "name": "working_directory",
+          "type": "str"
+        },
+        {
+          "name": "shell",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "stdout",
+          "type": "str"
+        },
+        {
+          "name": "stderr",
+          "type": "str"
+        },
+        {
+          "name": "return_code",
+          "type": "int"
+        }
+      ],
+      "platform": "darwin",
+      "available_shells": [
+        {
+          "name": "bash",
+          "path": "/bin/bash"
+        },
+        {
+          "name": "zsh",
+          "path": "/bin/zsh"
+        },
+        {
+          "name": "sh",
+          "path": "/bin/sh"
+        }
+      ],
+      "default_shell": "bash"
+    }
+  ],
+  "seeds": [
+    {
+      "id": "01",
+      "task": "Check whether hello.py exists in /tmp/os2ie_sandbox",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/hello.py"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "check_file_existence",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_exists"
+        ],
+        "output_type": {
+          "file_exists": "bool"
+        }
+      },
+      "expected": {
+        "tool": "exists",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/hello.py"
+        }
+      }
+    },
+    {
+      "id": "02",
+      "task": "List all files in /tmp/os2ie_sandbox",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "list_project_files",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "entries"
+        ],
+        "output_type": {
+          "entries": "list[str]"
+        }
+      },
+      "expected": {
+        "tool": "list_directory_recursive",
+        "inputs": {
+          "directory_path": "/tmp/os2ie_sandbox"
+        }
+      }
+    },
+    {
+      "id": "03",
+      "task": "Read the contents of /tmp/os2ie_sandbox/README.md",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/README.md"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "read_readme",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_contents"
+        ],
+        "output_type": {
+          "file_contents": "str"
+        }
+      },
+      "expected": {
+        "tool": "read_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/README.md"
+        }
+      }
+    },
+    {
+      "id": "04",
+      "task": "Delete the file /tmp/os2ie_sandbox/temp.txt",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/temp.txt"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "delete_temp_file",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_deleted"
+        ],
+        "output_type": {
+          "file_deleted": "bool"
+        }
+      },
+      "expected": {
+        "tool": "delete_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/temp.txt"
+        }
+      }
+    },
+    {
+      "id": "05",
+      "task": "Create /tmp/os2ie_sandbox/notes.txt with content 'first note'",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/notes.txt",
+        "content": "first note"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "create_notes_file",
+        "inputs": [
+          "file_path",
+          "content"
+        ],
+        "outputs": [
+          "file_created"
+        ],
+        "output_type": {
+          "file_created": "bool"
+        }
+      },
+      "expected": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/notes.txt",
+          "content": "first note"
+        }
+      }
+    },
+    {
+      "id": "06",
+      "task": "Check the Python version installed on this system",
+      "context": {},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "check_python_version",
+        "inputs": [],
+        "outputs": [
+          "python_version"
+        ],
+        "output_type": {
+          "python_version": "str"
+        }
+      },
+      "expected": {
+        "tool": "run_shell_command",
+        "inputs": {
+          "command": "python3 --version"
+        }
+      }
+    },
+    {
+      "id": "07",
+      "task": "Count all Python files in /tmp/os2ie_sandbox",
+      "context": {
+        "working_directory": "/tmp/os2ie_sandbox"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "count_python_files",
+        "inputs": [
+          "working_directory"
+        ],
+        "outputs": [
+          "python_file_count"
+        ],
+        "output_type": {
+          "python_file_count": "int"
+        }
+      },
+      "expected": {
+        "tool": "run_shell_command",
+        "inputs": {
+          "command": "find . -name '*.py' | wc -l",
+          "working_directory": "/tmp/os2ie_sandbox"
+        }
+      }
+    },
+    {
+      "id": "08",
+      "task": "Find all files containing 'import fastapi' in /tmp/os2ie_sandbox",
+      "context": {
+        "working_directory": "/tmp/os2ie_sandbox"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "find_files_with_import",
+        "inputs": [
+          "working_directory"
+        ],
+        "outputs": [
+          "matching_files"
+        ],
+        "output_type": {
+          "matching_files": "list[str]"
+        }
+      },
+      "expected": {
+        "tool": "run_shell_command",
+        "inputs": {
+          "command": "grep -rl 'import fastapi' .",
+          "working_directory": "/tmp/os2ie_sandbox"
+        }
+      }
+    },
+    {
+      "id": "09a",
+      "task": "Create /tmp/os2ie_sandbox/temp.txt with content 'hello' then read it back",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/temp.txt",
+        "content": "hello"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "create_temp_file",
+        "inputs": [
+          "file_path",
+          "content"
+        ],
+        "outputs": [
+          "file_created"
+        ],
+        "output_type": {
+          "file_created": "bool"
+        }
+      },
+      "expected": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/temp.txt",
+          "content": "hello"
+        }
+      }
+    },
+    {
+      "id": "09b",
+      "task": "Create /tmp/os2ie_sandbox/temp.txt with content 'hello' then read it back",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/temp.txt",
+        "content": "hello",
+        "success": true
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "read_temp_file",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_contents"
+        ],
+        "output_type": {
+          "file_contents": "str"
+        }
+      },
+      "expected": {
+        "tool": "read_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/temp.txt"
+        }
+      }
+    },
+    {
+      "id": "10a",
+      "task": "Create /tmp/os2ie_sandbox/log.txt, append 'line1', then append 'line2'",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/log.txt"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "create_log_file",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_created"
+        ],
+        "output_type": {
+          "file_created": "bool"
+        }
+      },
+      "expected": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/log.txt",
+          "content": ""
+        }
+      }
+    },
+    {
+      "id": "10b",
+      "task": "Create /tmp/os2ie_sandbox/log.txt, append 'line1', then append 'line2'",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/log.txt",
+        "success": true
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "append_line_to_log",
+        "inputs": [
+          "file_path",
+          "content"
+        ],
+        "outputs": [
+          "appended"
+        ],
+        "output_type": {
+          "appended": "bool"
+        }
+      },
+      "expected": {
+        "tool": "append_to_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/log.txt",
+          "content": "line1\n"
+        }
+      }
+    },
+    {
+      "id": "11a",
+      "task": "Create the directory /tmp/os2ie_sandbox/newdir then create a file inside it",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/newdir"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "create_project_directory",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "directory_created"
+        ],
+        "output_type": {
+          "directory_created": "bool"
+        }
+      },
+      "expected": {
+        "tool": "make_directory",
+        "inputs": {
+          "directory_path": "/tmp/os2ie_sandbox/newdir"
+        }
+      }
+    },
+    {
+      "id": "11b",
+      "task": "Create the directory /tmp/os2ie_sandbox/newdir then create a file inside it",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/newdir",
+        "created": true,
+        "file_path": "/tmp/os2ie_sandbox/newdir/file.txt",
+        "content": "hi"
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "create_file_in_directory",
+        "inputs": [
+          "file_path",
+          "content"
+        ],
+        "outputs": [
+          "file_created"
+        ],
+        "output_type": {
+          "file_created": "bool"
+        }
+      },
+      "expected": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/newdir/file.txt",
+          "content": "hi"
+        }
+      }
+    },
+    {
+      "id": "12a",
+      "task": "Run 'echo hello_from_shell' and write its stdout to /tmp/os2ie_sandbox/out.txt",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/out.txt"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "run_echo_command",
+        "inputs": [],
+        "outputs": [
+          "command_stdout"
+        ],
+        "output_type": {
+          "command_stdout": "str"
+        }
+      },
+      "expected": {
+        "tool": "run_shell_command",
+        "inputs": {
+          "command": "echo hello_from_shell"
+        }
+      }
+    },
+    {
+      "id": "12b",
+      "task": "Run 'echo hello_from_shell' and write its stdout to /tmp/os2ie_sandbox/out.txt",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/out.txt",
+        "stdout": "hello_from_shell\n",
+        "return_code": 0
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "write_stdout_to_file",
+        "inputs": [
+          "file_path",
+          "stdout"
+        ],
+        "outputs": [
+          "output_saved"
+        ],
+        "output_type": {
+          "output_saved": "bool"
+        }
+      },
+      "expected": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/out.txt",
+          "content": "hello_from_shell\n"
+        }
+      }
+    },
+    {
+      "id": "15",
+      "task": "Run the shell command 'exit 1'",
+      "context": {},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "run_failing_command",
+        "inputs": [],
+        "outputs": [
+          "return_code"
+        ],
+        "output_type": {
+          "return_code": "int"
+        }
+      },
+      "expected": {
+        "tool": "run_shell_command",
+        "inputs": {
+          "command": "exit 1"
+        }
+      }
+    }
+  ]
+}

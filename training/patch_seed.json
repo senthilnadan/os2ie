@@ -1,0 +1,936 @@
+{
+  "_note": "Seeds for /patchTaskExecutionOutcomeToAbstractOutcome. Each seed describes an execution gap \u2014 where grounded tools ran correctly but did not produce the abstract transition's declared outputs. patching_tools: pure type-bridging functions available at patch time. available_tools: runtime execution catalog (filesystem, shell) \u2014 used as fallback when no patching tool covers the gap.",
+  "patching_tools": [
+    {
+      "name": "count_list",
+      "description": "Count the number of items in a list.",
+      "inputs": [
+        {
+          "name": "items",
+          "type": "list"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "get_first",
+      "description": "Get the first item from a list.",
+      "inputs": [
+        {
+          "name": "items",
+          "type": "list"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "any"
+        }
+      ]
+    },
+    {
+      "name": "cast_int",
+      "description": "Cast a string value to int. Strips surrounding whitespace.",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "str"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "cast_float",
+      "description": "Cast a string value to float.",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "str"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "float"
+        }
+      ]
+    },
+    {
+      "name": "cast_str",
+      "description": "Cast any value to its string representation.",
+      "inputs": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "name": "split_lines",
+      "description": "Split a string on newlines into a list of strings. Empty lines are dropped.",
+      "inputs": [
+        {
+          "name": "text",
+          "type": "str"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "list[str]"
+        }
+      ]
+    },
+    {
+      "name": "join_list",
+      "description": "Join a list of strings with a separator.",
+      "inputs": [
+        {
+          "name": "items",
+          "type": "list"
+        },
+        {
+          "name": "sep",
+          "type": "str"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "str"
+        }
+      ]
+    },
+    {
+      "name": "filter_suffix",
+      "description": "Filter a list of strings to those ending with the given suffix.",
+      "inputs": [
+        {
+          "name": "items",
+          "type": "list"
+        },
+        {
+          "name": "suffix",
+          "type": "str"
+        },
+        {
+          "name": "result_key",
+          "type": "str"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "<result_key>",
+          "type": "list[str]"
+        }
+      ]
+    }
+  ],
+  "seeds": [
+    {
+      "id": "P01",
+      "description": "list \u2192 int: count all entries via count_list",
+      "pattern": "patching_tool",
+      "task": "Count the files in /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "count_files",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "file_count"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "list_directory_recursive",
+        "outputs": {
+          "entries": [
+            "a.txt",
+            "b.py",
+            "c.py"
+          ]
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "entries": [
+          "a.txt",
+          "b.py",
+          "c.py"
+        ]
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "count_list",
+            "inputs": {
+              "items": [
+                "a.txt",
+                "b.py",
+                "c.py"
+              ],
+              "result_key": "file_count"
+            },
+            "outputs": {
+              "file_count": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P02",
+      "description": "stdout str \u2192 int: cast stdout string to int via cast_int",
+      "pattern": "patching_tool",
+      "task": "Count the lines in /tmp/os2ie_sandbox/hello.py",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "count_lines_in_file",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "line_count"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "run_shell_command",
+        "outputs": {
+          "stdout": "12",
+          "stderr": "",
+          "return_code": 0
+        }
+      },
+      "state": {
+        "file_path": "/tmp/os2ie_sandbox/hello.py",
+        "stdout": "12",
+        "stderr": "",
+        "return_code": 0
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "cast_int",
+            "inputs": {
+              "value": "12",
+              "result_key": "line_count"
+            },
+            "outputs": {
+              "line_count": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P03",
+      "description": "stdout str \u2192 float: cast stdout to float via cast_float",
+      "pattern": "patching_tool",
+      "task": "Get the disk usage ratio for /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "get_disk_ratio",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "disk_ratio"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "run_shell_command",
+        "outputs": {
+          "stdout": "0.73",
+          "stderr": "",
+          "return_code": 0
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "stdout": "0.73",
+        "stderr": "",
+        "return_code": 0
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "cast_float",
+            "inputs": {
+              "value": "0.73",
+              "result_key": "disk_ratio"
+            },
+            "outputs": {
+              "disk_ratio": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P04",
+      "description": "list \u2192 first item: get first entry via get_first",
+      "pattern": "patching_tool",
+      "task": "Find the first Python file in /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "find_first_python_file",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "first_py_file"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "list_directory_recursive",
+        "outputs": {
+          "entries": [
+            "hello.py",
+            "utils.py",
+            "config.txt"
+          ]
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "entries": [
+          "hello.py",
+          "utils.py",
+          "config.txt"
+        ]
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "get_first",
+            "inputs": {
+              "items": [
+                "hello.py",
+                "utils.py",
+                "config.txt"
+              ],
+              "result_key": "first_py_file"
+            },
+            "outputs": {
+              "first_py_file": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P05",
+      "description": "stdout str \u2192 list[str]: split newline-separated output via split_lines",
+      "pattern": "patching_tool",
+      "task": "List all lines in /tmp/os2ie_sandbox/hello.py",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "get_file_lines",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_lines"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "run_shell_command",
+        "outputs": {
+          "stdout": "print('hello')\nprint('world')\n",
+          "stderr": "",
+          "return_code": 0
+        }
+      },
+      "state": {
+        "file_path": "/tmp/os2ie_sandbox/hello.py",
+        "stdout": "print('hello')\nprint('world')\n",
+        "stderr": "",
+        "return_code": 0
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "split_lines",
+            "inputs": {
+              "text": "print('hello')\nprint('world')\n",
+              "result_key": "file_lines"
+            },
+            "outputs": {
+              "file_lines": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P06",
+      "description": "list \u2192 str: join entries with separator via join_list",
+      "pattern": "patching_tool",
+      "task": "Get a comma-separated list of files in /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "get_file_list_as_string",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "file_list_str"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "list_directory",
+        "outputs": {
+          "entries": [
+            "a.txt",
+            "b.py",
+            "c.py"
+          ]
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "entries": [
+          "a.txt",
+          "b.py",
+          "c.py"
+        ]
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "join_list",
+            "inputs": {
+              "items": [
+                "a.txt",
+                "b.py",
+                "c.py"
+              ],
+              "sep": ",",
+              "result_key": "file_list_str"
+            },
+            "outputs": {
+              "file_list_str": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P07",
+      "description": "int \u2192 str: cast return_code to string via cast_str",
+      "pattern": "patching_tool",
+      "task": "Get the exit status of running /tmp/os2ie_sandbox/hello.py as a string",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "get_exit_status_string",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "exit_status_str"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "run_shell_command",
+        "outputs": {
+          "stdout": "",
+          "stderr": "",
+          "return_code": 0
+        }
+      },
+      "state": {
+        "file_path": "/tmp/os2ie_sandbox/hello.py",
+        "stdout": "",
+        "stderr": "",
+        "return_code": 0
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "cast_str",
+            "inputs": {
+              "value": 0,
+              "result_key": "exit_status_str"
+            },
+            "outputs": {
+              "exit_status_str": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P08",
+      "description": "list \u2192 filtered list: keep only .py files via filter_suffix",
+      "pattern": "patching_tool",
+      "task": "Find all Python files in /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "find_python_files",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "python_files"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "list_directory_recursive",
+        "outputs": {
+          "entries": [
+            "readme.md",
+            "hello.py",
+            "utils.py",
+            "config.txt"
+          ]
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "entries": [
+          "readme.md",
+          "hello.py",
+          "utils.py",
+          "config.txt"
+        ]
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "filter_suffix",
+            "inputs": {
+              "items": [
+                "readme.md",
+                "hello.py",
+                "utils.py",
+                "config.txt"
+              ],
+              "suffix": ".py",
+              "result_key": "python_files"
+            },
+            "outputs": {
+              "python_files": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P09",
+      "description": "list \u2192 int: multi-step filter_suffix then count_list for .py file count",
+      "pattern": "patching_tool_multi_step",
+      "task": "Count Python files in /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "count_python_files",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "python_file_count"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "list_directory_recursive",
+        "outputs": {
+          "entries": [
+            "readme.md",
+            "hello.py",
+            "utils.py",
+            "config.txt"
+          ]
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "entries": [
+          "readme.md",
+          "hello.py",
+          "utils.py",
+          "config.txt"
+        ]
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "filter_suffix",
+            "inputs": {
+              "items": [
+                "readme.md",
+                "hello.py",
+                "utils.py",
+                "config.txt"
+              ],
+              "suffix": ".py",
+              "result_key": "py_files"
+            },
+            "outputs": {
+              "py_files": null
+            }
+          },
+          {
+            "id": "patch_t2",
+            "tool": "count_list",
+            "inputs": {
+              "items": [
+                "hello.py",
+                "utils.py"
+              ],
+              "result_key": "python_file_count"
+            },
+            "outputs": {
+              "python_file_count": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P10",
+      "description": "str \u2192 list \u2192 int: multi-step split_lines then count_list for line count from stdout",
+      "pattern": "patching_tool_multi_step",
+      "task": "Count the number of Python files listed in /tmp/os2ie_sandbox/filelist.txt",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "count_entries_in_file",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "entry_count"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "run_shell_command",
+        "outputs": {
+          "stdout": "hello.py\nutils.py\nconfig.py\n",
+          "stderr": "",
+          "return_code": 0
+        }
+      },
+      "state": {
+        "file_path": "/tmp/os2ie_sandbox/filelist.txt",
+        "stdout": "hello.py\nutils.py\nconfig.py\n",
+        "stderr": "",
+        "return_code": 0
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "split_lines",
+            "inputs": {
+              "text": "hello.py\nutils.py\nconfig.py\n",
+              "result_key": "entry_lines"
+            },
+            "outputs": {
+              "entry_lines": null
+            }
+          },
+          {
+            "id": "patch_t2",
+            "tool": "count_list",
+            "inputs": {
+              "items": [
+                "hello.py",
+                "utils.py",
+                "config.py"
+              ],
+              "result_key": "entry_count"
+            },
+            "outputs": {
+              "entry_count": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "P11",
+      "description": "not_resolvable: create_file success:bool cannot satisfy file_contents:str",
+      "pattern": "not_resolvable",
+      "task": "Read the content of /tmp/os2ie_sandbox/hello.py",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "read_python_file",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_contents"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "create_file",
+        "outputs": {
+          "success": true
+        }
+      },
+      "state": {
+        "file_path": "/tmp/os2ie_sandbox/hello.py",
+        "content": "",
+        "success": true
+      },
+      "expected": {
+        "status": "not_resolvable",
+        "reason": "grounded tool produced only bool operational output \u2014 cannot derive file_contents:str from success:bool"
+      }
+    },
+    {
+      "id": "P12",
+      "description": "not_resolvable: delete_file deleted:bool cannot satisfy file_text:str",
+      "pattern": "not_resolvable",
+      "task": "Read the config file before deleting it",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "get_config_content",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "config_text"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "delete_file",
+        "outputs": {
+          "deleted": true
+        }
+      },
+      "state": {
+        "file_path": "/tmp/os2ie_sandbox/config.txt",
+        "deleted": true
+      },
+      "expected": {
+        "status": "not_resolvable",
+        "reason": "grounded tool produced only bool operational output \u2014 cannot derive config_text:str from deleted:bool"
+      }
+    },
+    {
+      "id": "P13",
+      "description": "not_resolvable: exists is_present:bool cannot satisfy file_contents:str",
+      "pattern": "not_resolvable",
+      "task": "Read hello.py content from the project folder",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "read_project_file",
+        "inputs": [
+          "file_path"
+        ],
+        "outputs": [
+          "file_text"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "exists",
+        "outputs": {
+          "is_present": true
+        }
+      },
+      "state": {
+        "file_path": "/tmp/os2ie_sandbox/hello.py",
+        "is_present": true
+      },
+      "expected": {
+        "status": "not_resolvable",
+        "reason": "grounded tool produced only bool operational output \u2014 cannot derive file_text:str from is_present:bool"
+      }
+    },
+    {
+      "id": "P14",
+      "description": "available_tool fallback: no patching tool can compute total file size \u2014 use run_shell_command",
+      "pattern": "available_tool_fallback",
+      "task": "Get the total size in bytes of all files in /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "get_total_file_size",
+        "inputs": [
+          "directory_path"
+        ],
+        "outputs": [
+          "total_size_bytes"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "list_directory_recursive",
+        "outputs": {
+          "entries": [
+            "hello.py",
+            "utils.py",
+            "config.txt"
+          ]
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "entries": [
+          "hello.py",
+          "utils.py",
+          "config.txt"
+        ]
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "run_shell_command",
+            "inputs": {
+              "command": "du -sb /tmp/os2ie_sandbox | awk '{print $1}'",
+              "working_directory": "",
+              "shell": ""
+            },
+            "outputs": {
+              "stdout": null,
+              "stderr": null,
+              "return_code": null
+            }
+          },
+          {
+            "id": "patch_t2",
+            "tool": "cast_int",
+            "inputs": {
+              "value": null,
+              "result_key": "total_size_bytes"
+            },
+            "outputs": {
+              "total_size_bytes": null
+            }
+          }
+        ],
+        "_note": "patch_t2 inputs.value will be resolved from state['stdout'] after patch_t1 runs"
+      }
+    },
+    {
+      "id": "P15",
+      "description": "available_tool fallback: no patching tool can grep file content \u2014 use run_shell_command + split_lines",
+      "pattern": "available_tool_fallback",
+      "task": "Find Python files that import os in /tmp/os2ie_sandbox",
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "find_files_with_import",
+        "inputs": [
+          "directory_path",
+          "import_name"
+        ],
+        "outputs": [
+          "files_with_import"
+        ]
+      },
+      "execution_outcome": {
+        "tool": "list_directory_recursive",
+        "outputs": {
+          "entries": [
+            "hello.py",
+            "utils.py",
+            "config.txt"
+          ]
+        }
+      },
+      "state": {
+        "directory_path": "/tmp/os2ie_sandbox",
+        "import_name": "os",
+        "entries": [
+          "hello.py",
+          "utils.py",
+          "config.txt"
+        ]
+      },
+      "expected": {
+        "status": "resolved",
+        "patch_transitions": [
+          {
+            "id": "patch_t1",
+            "tool": "run_shell_command",
+            "inputs": {
+              "command": "grep -rl 'import os' /tmp/os2ie_sandbox --include='*.py'",
+              "working_directory": "",
+              "shell": ""
+            },
+            "outputs": {
+              "stdout": null,
+              "stderr": null,
+              "return_code": null
+            }
+          },
+          {
+            "id": "patch_t2",
+            "tool": "split_lines",
+            "inputs": {
+              "text": null,
+              "result_key": "files_with_import"
+            },
+            "outputs": {
+              "files_with_import": null
+            }
+          }
+        ],
+        "_note": "patch_t2 inputs.text resolved from state['stdout'] after patch_t1 runs"
+      }
+    }
+  ]
+}

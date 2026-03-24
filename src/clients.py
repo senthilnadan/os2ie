@@ -1,0 +1,43 @@
+from __future__ import annotations
+from typing import Any
+import requests
+from .models import AbstractDSTT, AbstractTransition, ExecutableDSTT
+from .catalog import build_catalog
+
+# Built once at import time — reflects the shells and tools available on this machine.
+_CATALOG: list[dict[str, Any]] = build_catalog()
+
+
+class Task2PlanClient:
+    def __init__(self, base_url: str):
+        self._url = f"{base_url.rstrip('/')}/as_task2plan"
+
+    def plan(self, task: str) -> tuple[AbstractDSTT, dict[str, Any]]:
+        resp = requests.post(self._url, json={"user_task": task})
+        resp.raise_for_status()
+        data = resp.json()
+        return AbstractDSTT(**data["abstract_dstt"]), data.get("meta", {})
+
+
+class Transition2ExecClient:
+    def __init__(self, base_url: str):
+        self._url = f"{base_url.rstrip('/')}/transition2exec"
+
+    def compile(
+        self,
+        task: str,
+        state: dict[str, Any],
+        abstract_transition: AbstractTransition,
+    ) -> tuple[ExecutableDSTT, dict[str, Any]]:
+        resp = requests.post(
+            self._url,
+            json={
+                "task": task,
+                "context": state,
+                "abstract_transition": abstract_transition.model_dump(),
+                "available_tools": _CATALOG,
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return ExecutableDSTT(**data["executable_dstt"]), data.get("meta", {})
