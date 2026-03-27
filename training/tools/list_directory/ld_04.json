@@ -1,0 +1,46 @@
+{
+  "_scenario": "directory_path sourced from state \u2014 key resolution",
+  "_pass": true,
+  "user_task": "Inspect the target directory and list what is inside it",
+  "state": {
+    "directory_path": "/tmp/os2ie_sandbox/target"
+  },
+  "abstract_transition": {
+    "id": "t1",
+    "tool": "inspect_directory",
+    "inputs": [
+      "directory_path"
+    ],
+    "outputs": [
+      "entries"
+    ],
+    "output_type": {
+      "entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/target"
+            },
+            "outputs": {
+              "entries": null
+            }
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ],
+    "context": {
+      "tool_plan": "TOOL: list_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/target"
+    }
+  }
+}

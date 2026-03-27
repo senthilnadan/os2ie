@@ -1,0 +1,84 @@
+{
+  "_scenario": "no directory in state \u2014 derive from task text",
+  "_pass": false,
+  "user_task": "List files in /tmp/os2ie_sandbox/derived",
+  "state": {},
+  "abstract_transition": {
+    "id": "t1",
+    "tool": "list_files",
+    "inputs": [
+      "directory_path"
+    ],
+    "outputs": [
+      "entries"
+    ],
+    "output_type": {
+      "entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "needs_decomposition",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "getOrAskContextAndConstraints",
+            "inputs": {
+              "task": "List files in /tmp/os2ie_sandbox/derived"
+            },
+            "outputs": {
+              "context": null,
+              "constraints": null
+            }
+          }
+        ],
+        "milestone": [
+          "context",
+          "constraints"
+        ]
+      },
+      {
+        "transitions": [
+          {
+            "id": "t2",
+            "tool": "transition2exec",
+            "inputs": {
+              "task": "List files in /tmp/os2ie_sandbox/derived"
+            },
+            "outputs": {
+              "executable_dstt": null
+            }
+          }
+        ],
+        "milestone": [
+          "executable_dstt"
+        ]
+      }
+    ],
+    "context": {
+      "resolved_by": "Transition2Exec",
+      "notes": "Clarify and retry."
+    }
+  },
+  "expected_exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/derived"
+            },
+            "outputs": {}
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ]
+  }
+}

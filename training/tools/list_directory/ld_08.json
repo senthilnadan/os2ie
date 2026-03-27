@@ -1,0 +1,46 @@
+{
+  "_scenario": "mixed files and subdirs \u2014 abstract tool is 'browse_folder'",
+  "_pass": true,
+  "user_task": "Browse /tmp/os2ie_sandbox/workspace and show files and folders at the top level",
+  "state": {
+    "directory_path": "/tmp/os2ie_sandbox/workspace"
+  },
+  "abstract_transition": {
+    "id": "t1",
+    "tool": "browse_folder",
+    "inputs": [
+      "directory_path"
+    ],
+    "outputs": [
+      "entries"
+    ],
+    "output_type": {
+      "entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/workspace"
+            },
+            "outputs": {
+              "entries": null
+            }
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ],
+    "context": {
+      "tool_plan": "TOOL: list_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/workspace"
+    }
+  }
+}

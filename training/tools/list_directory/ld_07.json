@@ -1,0 +1,46 @@
+{
+  "_scenario": "abstract tool name implies counting \u2014 must still resolve to list_directory",
+  "_pass": true,
+  "user_task": "Count how many items are in /tmp/os2ie_sandbox/assets",
+  "state": {
+    "directory_path": "/tmp/os2ie_sandbox/assets"
+  },
+  "abstract_transition": {
+    "id": "t1",
+    "tool": "count_directory_entries",
+    "inputs": [
+      "directory_path"
+    ],
+    "outputs": [
+      "entries"
+    ],
+    "output_type": {
+      "entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/assets"
+            },
+            "outputs": {
+              "entries": null
+            }
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ],
+    "context": {
+      "tool_plan": "TOOL: list_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/assets"
+    }
+  }
+}

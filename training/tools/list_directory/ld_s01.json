@@ -1,0 +1,46 @@
+{
+  "_scenario": "state key named 'folder' \u2014 alias resolution",
+  "_pass": true,
+  "user_task": "List the contents of the output folder",
+  "state": {
+    "folder": "/tmp/os2ie_sandbox/output"
+  },
+  "abstract_transition": {
+    "id": "t1",
+    "tool": "list_output_folder",
+    "inputs": [
+      "folder"
+    ],
+    "outputs": [
+      "entries"
+    ],
+    "output_type": {
+      "entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/output"
+            },
+            "outputs": {
+              "entries": null
+            }
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ],
+    "context": {
+      "tool_plan": "TOOL: list_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/output"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "list_directory",
+    "description": "List the immediate children of a directory (non-recursive).",
+    "signature": {
+      "inputs": [
+        "directory_path"
+      ],
+      "outputs": [
+        "entries"
+      ]
+    },
+    "inputs": [
+      {
+        "name": "directory_path",
+        "type": "str"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "entries",
+        "type": "list[str]"
+      }
+    ]
+  }
+]

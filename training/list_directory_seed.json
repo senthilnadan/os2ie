@@ -1,0 +1,173 @@
+{
+  "_note": "v1.1 training seeds — list_directory only. available_tools is restricted to the single tool under focus.",
+  "available_tools": [
+    {
+      "name": "list_directory",
+      "description": "List the immediate children of a directory (non-recursive).",
+      "signature": {
+        "inputs": ["directory_path"],
+        "outputs": ["entries"]
+      },
+      "inputs": [
+        { "name": "directory_path", "type": "str" }
+      ],
+      "outputs": [
+        { "name": "entries", "type": "list[str]" }
+      ]
+    }
+  ],
+  "seeds": [
+    {
+      "id": "ld_01",
+      "_scenario": "basic listing — correct entries returned",
+      "task": "List all files in /tmp/os2ie_sandbox",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "list_project_files",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": { "entries": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox" }
+      }
+    },
+    {
+      "id": "ld_02",
+      "_scenario": "empty directory — entries=[], not a failure",
+      "task": "List the contents of the empty staging folder /tmp/os2ie_sandbox/empty_dir",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/empty_dir"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "list_empty_folder",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": { "entries": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox/empty_dir" }
+      }
+    },
+    {
+      "id": "ld_03",
+      "_scenario": "non-recursive — only immediate children, no nested files",
+      "task": "Show the immediate children of /tmp/os2ie_sandbox/project, do not recurse into subdirectories",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/project"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "get_immediate_children",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": { "entries": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox/project" }
+      }
+    },
+    {
+      "id": "ld_04",
+      "_scenario": "directory_path sourced from state — key resolution",
+      "task": "Inspect the target directory and list what is inside it",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/target"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "inspect_directory",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": { "entries": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox/target" }
+      }
+    },
+    {
+      "id": "ld_05",
+      "_scenario": "output key is 'entries' — LLM must not rename it",
+      "task": "Enumerate everything inside /tmp/os2ie_sandbox/src and store the result",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/src"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "enumerate_directory",
+        "inputs": ["directory_path"],
+        "outputs": ["directory_contents"],
+        "output_type": { "directory_contents": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox/src" }
+      }
+    },
+    {
+      "id": "ld_06",
+      "_scenario": "vague abstract tool name — scan_directory_contents",
+      "task": "Scan /tmp/os2ie_sandbox/data and return everything found at the top level",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/data"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "scan_directory_contents",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": { "entries": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox/data" }
+      }
+    },
+    {
+      "id": "ld_07",
+      "_scenario": "abstract tool name implies counting — must still resolve to list_directory",
+      "task": "Count how many items are in /tmp/os2ie_sandbox/assets",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/assets"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "count_directory_entries",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": { "entries": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox/assets" }
+      }
+    },
+    {
+      "id": "ld_08",
+      "_scenario": "mixed files and subdirs — abstract tool is 'browse_folder'",
+      "task": "Browse /tmp/os2ie_sandbox/workspace and show files and folders at the top level",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/workspace"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "browse_folder",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": { "entries": "list[str]" }
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": { "directory_path": "/tmp/os2ie_sandbox/workspace" }
+      }
+    }
+  ]
+}

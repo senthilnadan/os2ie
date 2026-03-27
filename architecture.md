@@ -537,6 +537,97 @@ warranted by the task, not used as a default fallback.
 
 ---
 
+---
+
+### transition2exec v1.1 — Programmatic Transition Construction
+
+**Problem with v1.0:** The two-stage LLM pipeline (tool_sequence → dstt_format) asks the
+model to resolve concrete values from state AND format them as JSON. Small models (3b/7b)
+consistently corrupt values — substituting output key names, paraphrasing paths, or echoing
+key names as values. Value copying is not an LLM task.
+
+**New internal pipeline:**
+```
+Stage 1  (LLM)      — tool selection + key binding only
+Stage 1.5 (program) — value resolution + transition construction
+Stage 2  (LLM)      — eliminated
+```
+
+**Stage 1 output (plain text):**
+```
+TOOL: list_directory
+BIND: directory_path ← folder
+```
+
+The LLM declares which state key maps to each tool input key. It never sees or copies
+concrete values — only key names and semantics.
+
+**Stage 1.5 resolution algorithm:**
+```
+tool = lookup(tool_name, available_tools)
+
+# Input resolution — input signature only, output signature never in scope
+for input_key in tool.input_signature:
+    bind_key = BIND.get(input_key, input_key)
+
+    if bind_key in state:
+        inputs[input_key] = state[bind_key]       # exact copy, no paraphrase
+    elif input_key in state:
+        inputs[input_key] = state[input_key]      # direct match
+    else:
+        result = extract_from_task(input_key, task)
+        if result is None or result == "" or result == input_key:
+            mark ambiguous                         # key echo = not found
+        else:
+            inputs[input_key] = result
+
+# Output binding — output signature only, input signature never in scope
+for output_key in tool.output_signature:
+    outputs[output_key] = null
+
+# Construct transition — no LLM involved
+transition = ExecutableTransition(id, tool, inputs, outputs)
+segment    = ExecutableSegment([transition], milestone=tool.output_signature.keys)
+```
+
+**Key invariant:** input resolution and output binding operate on strictly separate
+namespaces. Confusion between the two is structurally impossible.
+
+**extract_from_task null contract:**
+`extract_from_task` must return `None` when the LLM returns an empty string, null,
+or a value identical to the input key name (key echo). The caller treats `None` as
+"nothing found" and marks the transition ambiguous. The extract LLM call must never
+guarantee a non-null response — a forced guess is worse than an explicit ambiguous.
+
+**Ambiguous conditions:**
+- Stage 1 returned `STATUS: ambiguous` or an unknown tool name
+- A required input has no state match and `extract_from_task` returned None
+- Multiple state keys match an input key with equal confidence
+
+**Status values:**
+
+| Status | Meaning |
+|--------|---------|
+| `ok` | All inputs resolved, transition constructed |
+| `ambiguous` | One or more inputs unresolvable — DSTT runtime escalates |
+| `not_mappable` | No tool in catalog can fulfil the abstract transition |
+
+**Failure handling:** Bad literals that pass through (key echo, paraphrased path) surface
+as `ValueError` at the tool call and are handled by the repair service. v1.1 eliminates
+only the silent substitution class (`directory_path=entries`) where no error is raised and
+the wrong value propagates undetected.
+
+**What is eliminated:**
+
+| v1.0 | v1.1 |
+|------|------|
+| Stage 1 outputs `TOOL + INPUTS` (values) | Stage 1 outputs `TOOL + BIND` (key mappings only) |
+| Stage 2 LLM formats JSON | Stage 2 eliminated — program constructs directly |
+| LLM copies values from state | Program copies values from state |
+| Value corruption failures | Structurally impossible |
+
+---
+
 ## 10. Open Decisions
 
 - **Tool registry injection** — static registry at startup or dynamic registration
@@ -545,3 +636,7 @@ warranted by the task, not used as a default fallback.
   Should live in a `prompts/` file like the other LLM calls.
 - **available_tools in transition2exec** — currently defaults to the built-in
   catalog. Runtime-provided tool lists would allow domain-specific grounding.
+- **extract_from_task null contract** — the narrow LLM call for deriving input values
+  not present in state must have a defined null response (empty, null, or key echo →
+  return None). Currently `_extract_value` always returns something. Contract must be
+  enforced before v1.1 resolver is implemented.

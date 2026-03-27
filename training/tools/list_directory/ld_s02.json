@@ -1,0 +1,48 @@
+{
+  "_scenario": "state has multiple keys \u2014 pick the right one",
+  "_pass": true,
+  "user_task": "List files in the source directory",
+  "state": {
+    "source_dir": "/tmp/os2ie_sandbox/src",
+    "output_dir": "/tmp/os2ie_sandbox/out",
+    "file_path": "/tmp/os2ie_sandbox/src/main.py"
+  },
+  "abstract_transition": {
+    "id": "t1",
+    "tool": "list_source_directory",
+    "inputs": [
+      "source_dir"
+    ],
+    "outputs": [
+      "entries"
+    ],
+    "output_type": {
+      "entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/src"
+            },
+            "outputs": {
+              "entries": null
+            }
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ],
+    "context": {
+      "tool_plan": "TOOL: list_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/src"
+    }
+  }
+}

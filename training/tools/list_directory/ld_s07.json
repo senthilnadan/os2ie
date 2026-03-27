@@ -1,0 +1,50 @@
+{
+  "_scenario": "prior 'entries' in state \u2014 must not confuse with input",
+  "_pass": true,
+  "user_task": "List the build directory",
+  "state": {
+    "directory_path": "/tmp/os2ie_sandbox/build",
+    "entries": [
+      "file_a.py",
+      "file_b.py"
+    ]
+  },
+  "abstract_transition": {
+    "id": "t2",
+    "tool": "list_build_directory",
+    "inputs": [
+      "directory_path"
+    ],
+    "outputs": [
+      "build_entries"
+    ],
+    "output_type": {
+      "build_entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/build"
+            },
+            "outputs": {
+              "entries": null
+            }
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ],
+    "context": {
+      "tool_plan": "TOOL: list_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/build"
+    }
+  }
+}

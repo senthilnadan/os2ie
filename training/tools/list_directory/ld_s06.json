@@ -1,0 +1,46 @@
+{
+  "_scenario": "state key is 'path' \u2014 ambiguous alias",
+  "_pass": true,
+  "user_task": "Show what is inside the directory",
+  "state": {
+    "path": "/tmp/os2ie_sandbox/ambiguous"
+  },
+  "abstract_transition": {
+    "id": "t1",
+    "tool": "show_directory",
+    "inputs": [
+      "path"
+    ],
+    "outputs": [
+      "entries"
+    ],
+    "output_type": {
+      "entries": "list[str]"
+    }
+  },
+  "exec_dstt": {
+    "status": "ok",
+    "segments": [
+      {
+        "transitions": [
+          {
+            "id": "t1",
+            "tool": "list_directory",
+            "inputs": {
+              "directory_path": "/tmp/os2ie_sandbox/ambiguous"
+            },
+            "outputs": {
+              "entries": null
+            }
+          }
+        ],
+        "milestone": [
+          "entries"
+        ]
+      }
+    ],
+    "context": {
+      "tool_plan": "TOOL: list_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/ambiguous"
+    }
+  }
+}
