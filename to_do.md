@@ -149,28 +149,39 @@ if exec_dstt.status != "ok":
 
 **Two independent modes. Designed and built separately.**
 
+### Output contracts (locked)
+
+| Mode | Output |
+|------|--------|
+| `compile_dstt` | `ExecutableDSTT` + `available_tools` |
+| `explore` | `ExecutableDSTT` + `available_tools` + `exploration_tools` |
+
+`available_tools` is the injected catalog (minus `run_shell_command`) — same
+in both modes. `exploration_tools` is the additional set produced by explore
+mode: tools tried, alternatives considered, paths taken during execution.
+
 ### compile_dstt  ← we are here
 Abstract DSTT → Executable DSTT. Compile only — no dispatch, no state
 mutation from tools.
 
 - Calls `transition2exec` for every abstract transition
 - Accumulates grounded transitions into a fully compiled executable DSTT
-- Output handed to an executor (another kernel instance, remote executor,
-  human review, or explore mode)
+- Output: `ExecutableDSTT` + `available_tools`
 - not_mappable → Path A (CreateTransitionHandler: shell fallback → escalation)
 - No tool errors possible — nothing is dispatched
 
 ### explore
-Execute AND produce an executable DSTT + exploration tree.
+Execute AND produce an executable DSTT + exploration set.
 
 - Compiles each transition and dispatches it immediately
 - State grows as tools execute; each compile sees live state
-- Produces: `ExecutableDSTT` + `ExplorationTree` (decision trail, branches
-  tried, outcomes at each node)
+- Output: `ExecutableDSTT` + `available_tools` + `exploration_tools`
+- `exploration_tools` captures the decision trail — tools tried, branches
+  taken, outcomes at each node
 - not_mappable → Path A applies at compile step
 - Tool error → Path B applies at dispatch step (reasoning repair →
   shell fallback → escalate)
-- Exploration tree feeds Generation 2 adaptive execution (conditional
+- Full exploration set feeds Generation 2 adaptive execution (conditional
   segment routing, milestone validation, partial replanning)
 
 ---
