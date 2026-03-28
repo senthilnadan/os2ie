@@ -83,14 +83,15 @@ def test_finally_latch_passes_when_outputs_present(monkeypatch):
 # Test 2 — tool returns wrong key name → declared output missing → latch fires
 # ---------------------------------------------------------------------------
 
-def test_finally_latch_fires_when_output_key_wrong(monkeypatch):
+def test_finally_latch_auto_aliases_1to1_mismatch(monkeypatch):
     """
     Abstract transition declares output ["moved"].
-    Tool returns {"result": True} — wrong key, no output_binding to fix it.
-    Latch detects "moved" missing from state and fires before any next transition.
+    Tool returns {"result": True} — wrong key, no output_binding.
+    1 declared missing, 1 unbound actual → kernel auto-aliases result→moved.
+    Latch passes, declared key lands in state.
     """
     monkeypatch.setitem(__import__("src.tools", fromlist=["TOOL_REGISTRY"]).TOOL_REGISTRY,
-                        "move_file", lambda state: {"result": True})  # wrong key
+                        "move_file", lambda state: {"result": True})
 
     abstract = _abstract_dstt("move_artifact", ["source_path", "destination_path"], ["moved"])
     stub = StubTransition2ExecClient([
@@ -111,9 +112,9 @@ def test_finally_latch_fires_when_output_key_wrong(monkeypatch):
         available_tools=[],
     )
 
-    assert result.status == "failed"
-    assert "finally" in result.execution_log[-1].error
-    assert "moved" in result.execution_log[-1].error
+    assert result.status == "completed"
+    assert "moved" in result.state       # declared key aliased into state
+    assert result.state["moved"] is True # value preserved from actual output
 
 
 # ---------------------------------------------------------------------------

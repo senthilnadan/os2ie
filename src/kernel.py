@@ -96,15 +96,30 @@ def execute(
             # 3. FINALLY LATCH — verify declared outputs landed in state.
             # Checks abstract_transition.outputs (the contract), not grounded outputs.
             # output_binding must have mapped shell/tool keys to abstract keys by now.
-            # If any declared output is missing, the transition did not honour its
-            # contract — fire escape hatch before the next transition compiles.
+            # If any declared output is missing, attempt deterministic auto-alias before
+            # firing the escape hatch.
             missing = [k for k in abstract_transition.outputs if k not in state]
             if missing:
-                return _fail(
-                    execution_log, state, segments_completed, milestone_reached,
-                    abstract_transition.id, abstract_transition.tool,
-                    {}, f"finally: declared outputs missing from state: {missing}",
-                )
+                # Auto-alias: find tool outputs that arrived from this dispatch and are
+                # not yet aliased to any declared output key.
+                unbound = [k for k in outputs if k not in state or k not in abstract_transition.outputs]
+                if len(missing) == len(unbound):
+                    # Unambiguous N:N positional alias — deterministic, no reasoning needed.
+                    for declared_key, actual_key in zip(missing, unbound):
+                        state[declared_key] = state[actual_key]
+                else:
+                    # Ambiguous mismatch — cannot resolve deterministically.
+                    # Future: call TransitionLatch reasoning service here.
+                    # TransitionLatch receives: declared outputs, tool actual outputs,
+                    # segment milestone, remaining transition inputs — reasons about
+                    # which actual key satisfies which declared key.
+                    # For now: escape hatch.
+                    return _fail(
+                        execution_log, state, segments_completed, milestone_reached,
+                        abstract_transition.id, abstract_transition.tool,
+                        {}, f"finally: ambiguous output mismatch — declared={missing} "
+                            f"unbound_actual={unbound}",
+                    )
 
         reached = [k for k in segment.milestone if k in state]
         milestone_reached.extend(reached)

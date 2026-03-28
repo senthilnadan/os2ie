@@ -75,18 +75,17 @@ def test_exists_natural_output_passes(monkeypatch):
     assert result.state["is_present"] is True
 
 
-def test_exists_wrong_declared_key_fires_latch(monkeypatch):
-    """Planner declares 'file_exists' but tool returns 'is_present' — latch fires."""
+def test_exists_1to1_auto_alias(monkeypatch):
+    """Planner declares 'file_exists' but tool returns 'is_present' — 1:1 auto-alias, latch passes."""
     abstract, grounded = _dstt(
-        "check_file_exists", ["file_exists"],   # wrong declared key
+        "check_file_exists", ["file_exists"],   # declared key differs from natural
         "exists", {"file_path": "/tmp/os2ie_sandbox/f.txt"},
     )
     result = run(abstract, grounded,
                  {"file_path": "/tmp/os2ie_sandbox/f.txt"},
                  {"exists": lambda s: {"is_present": True}}, monkeypatch)
-    assert result.status == "failed"
-    assert "finally" in result.execution_log[-1].error
-    assert "file_exists" in result.execution_log[-1].error
+    assert result.status == "completed"
+    assert result.state["file_exists"] is True   # aliased from is_present
 
 
 # ---------------------------------------------------------------------------
@@ -106,17 +105,17 @@ def test_list_directory_natural_output_passes(monkeypatch):
     assert result.state["entries"] == ["a.py", "b.py"]
 
 
-def test_list_directory_wrong_declared_key_fires_latch(monkeypatch):
-    """Planner declares 'file_list' but tool returns 'entries' — latch fires."""
+def test_list_directory_1to1_auto_alias(monkeypatch):
+    """Planner declares 'file_list' but tool returns 'entries' — 1:1 auto-alias, latch passes."""
     abstract, grounded = _dstt(
-        "list_project_files", ["file_list"],   # wrong declared key
+        "list_project_files", ["file_list"],   # declared key differs from natural
         "list_directory", {"directory_path": "/tmp/os2ie_sandbox", "recursive": False},
     )
     result = run(abstract, grounded,
                  {"directory_path": "/tmp/os2ie_sandbox"},
                  {"list_directory": lambda s: {"entries": ["a.py"]}}, monkeypatch)
-    assert result.status == "failed"
-    assert "finally" in result.execution_log[-1].error
+    assert result.status == "completed"
+    assert result.state["file_list"] == ["a.py"]   # aliased from entries
 
 
 # ---------------------------------------------------------------------------
@@ -151,19 +150,18 @@ def test_read_file_abstract_key_via_binding_passes(monkeypatch):
     assert result.state["text"] == "hello"      # grounded key also in state
 
 
-def test_read_file_abstract_key_no_binding_fires_latch(monkeypatch):
-    """Planner declares 'content' but no output_binding — latch fires."""
+def test_read_file_abstract_key_no_binding_auto_aliases(monkeypatch):
+    """Planner declares 'content', no output_binding — 1:1 auto-alias resolves text→content."""
     abstract, grounded = _dstt(
         "read_source_file", ["content"],   # abstract key
         "read_file", {"file_path": "/tmp/os2ie_sandbox/a.txt"},
-        output_binding={},                 # no binding
+        output_binding={},                 # no binding — auto-alias kicks in
     )
     result = run(abstract, grounded,
                  {"file_path": "/tmp/os2ie_sandbox/a.txt"},
                  {"read_file": lambda s: {"text": "hello"}}, monkeypatch)
-    assert result.status == "failed"
-    assert "finally" in result.execution_log[-1].error
-    assert "content" in result.execution_log[-1].error
+    assert result.status == "completed"
+    assert result.state["content"] == "hello"   # aliased from text
 
 
 # ---------------------------------------------------------------------------
@@ -183,18 +181,17 @@ def test_create_file_natural_output_passes(monkeypatch):
     assert result.state["success"] is True
 
 
-def test_create_file_wrong_declared_key_fires_latch(monkeypatch):
-    """Planner declares 'created' but tool returns 'success' — latch fires."""
+def test_create_file_1to1_auto_alias(monkeypatch):
+    """Planner declares 'created' but tool returns 'success' — 1:1 auto-alias, latch passes."""
     abstract, grounded = _dstt(
-        "write_output_file", ["created"],   # wrong key
+        "write_output_file", ["created"],   # declared key differs from natural
         "create_file", {"file_path": "/tmp/os2ie_sandbox/out.txt", "content": "hi"},
     )
     result = run(abstract, grounded,
                  {"file_path": "/tmp/os2ie_sandbox/out.txt", "content": "hi"},
                  {"create_file": lambda s: {"success": True}}, monkeypatch)
-    assert result.status == "failed"
-    assert "finally" in result.execution_log[-1].error
-    assert "created" in result.execution_log[-1].error
+    assert result.status == "completed"
+    assert result.state["created"] is True   # aliased from success
 
 
 # ---------------------------------------------------------------------------
