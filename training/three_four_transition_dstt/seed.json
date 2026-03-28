@@ -1,0 +1,291 @@
+{
+  "_note": "3-and-4 transition abstract DSTT seeds. Each seed has one segment with 3 or 4 transitions. The critical dimensions: (1) state threading across multiple hops, (2) shell escape outputs consumed by downstream catalog tools, (3) early-transition outputs still present and usable by later transitions.",
+
+  "_threading_patterns": {
+    "linear":        "T1→T2→T3: each transition consumes the previous output",
+    "skip":          "T1→T3: T1 output skips T2 and is consumed by T3",
+    "fan_in":        "T1+T2→T3: T3 inputs come from both T1 and T2 outputs",
+    "shell_to_catalog": "Shell escape output (stdout) flows as content input to a catalog tool",
+    "guard":         "T1 boolean output (is_present, deleted) confirms precondition for T2+"
+  },
+
+  "seeds": [
+
+    {
+      "id": "tt3-01",
+      "_scenario": "check exists → read → write backup",
+      "_pattern": "guard + linear",
+      "_thread": "file_path threads all three; text from T2 flows to T3 content",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "check_source_file_exists", "inputs": ["file_path"], "outputs": ["is_present"] },
+            { "id": "t2", "tool": "read_source_file",          "inputs": ["file_path"], "outputs": ["text"] },
+            { "id": "t3", "tool": "write_backup_file",         "inputs": ["backup_path", "content"], "outputs": ["success"] }
+          ],
+          "milestone": ["is_present", "text", "success"]
+        }]
+      },
+      "initial_context": {
+        "file_path": "/tmp/os2ie_sandbox/config.yaml",
+        "backup_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "exists",      "key_inputs": ["file_path"] },
+        "t2": { "compiled_tool": "read_file",   "key_inputs": ["file_path"] },
+        "t3": { "compiled_tool": "create_file", "key_inputs": ["backup_path->file_path", "text->content"] }
+      }
+    },
+
+    {
+      "id": "tt3-02",
+      "_scenario": "make directory → shell count files → write count report",
+      "_pattern": "shell_to_catalog",
+      "_thread": "created confirms dir exists; shell stdout (file_count) flows to T3 content",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "create_reports_directory", "inputs": ["directory_path"], "outputs": ["created"] },
+            { "id": "t2", "tool": "count_python_files",       "inputs": ["source_directory"], "outputs": ["file_count"] },
+            { "id": "t3", "tool": "write_count_report",       "inputs": ["report_path", "content"], "outputs": ["success"] }
+          ],
+          "milestone": ["created", "file_count", "success"]
+        }]
+      },
+      "initial_context": {
+        "directory_path": "/tmp/os2ie_sandbox/reports",
+        "source_directory": "/tmp/os2ie_sandbox/src",
+        "report_path": "/tmp/os2ie_sandbox/reports/count.txt"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "make_directory",      "key_inputs": ["directory_path"] },
+        "t2": { "compiled_tool": "run_shell_command",   "key_inputs": ["source_directory->command"] },
+        "t3": { "compiled_tool": "create_file",         "key_inputs": ["report_path->file_path", "file_count->content"] }
+      }
+    },
+
+    {
+      "id": "tt3-03",
+      "_scenario": "read file → append content to archive → verify archive exists",
+      "_pattern": "linear + guard at end",
+      "_thread": "text from T1 flows to T2 content; file_path threads T2→T3",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "read_log_entry",    "inputs": ["source_path"], "outputs": ["text"] },
+            { "id": "t2", "tool": "append_to_archive", "inputs": ["archive_path", "content"], "outputs": ["success"] },
+            { "id": "t3", "tool": "verify_archive",    "inputs": ["archive_path"], "outputs": ["is_present"] }
+          ],
+          "milestone": ["text", "success", "is_present"]
+        }]
+      },
+      "initial_context": {
+        "source_path": "/tmp/os2ie_sandbox/today.log",
+        "archive_path": "/tmp/os2ie_sandbox/archive.log"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "read_file",        "key_inputs": ["source_path->file_path"] },
+        "t2": { "compiled_tool": "append_to_file",   "key_inputs": ["archive_path->file_path", "text->content"] },
+        "t3": { "compiled_tool": "exists",           "key_inputs": ["archive_path->file_path"] }
+      }
+    },
+
+    {
+      "id": "tt3-04",
+      "_scenario": "delete stale file → shell build → save build output",
+      "_pattern": "shell_to_catalog",
+      "_thread": "deleted confirms clean slate; shell stdout flows to T3 content",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "remove_stale_artifact",  "inputs": ["file_path"], "outputs": ["deleted"] },
+            { "id": "t2", "tool": "run_build_script",       "inputs": ["working_directory"], "outputs": ["build_output"] },
+            { "id": "t3", "tool": "save_build_log",         "inputs": ["log_path", "content"], "outputs": ["success"] }
+          ],
+          "milestone": ["deleted", "build_output", "success"]
+        }]
+      },
+      "initial_context": {
+        "file_path": "/tmp/os2ie_sandbox/output.bin",
+        "working_directory": "/tmp/os2ie_sandbox/project",
+        "log_path": "/tmp/os2ie_sandbox/build.log"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "delete_file",       "key_inputs": ["file_path"] },
+        "t2": { "compiled_tool": "run_shell_command", "key_inputs": ["working_directory->command"] },
+        "t3": { "compiled_tool": "create_file",       "key_inputs": ["log_path->file_path", "build_output->content"] }
+      }
+    },
+
+    {
+      "id": "tt3-05",
+      "_scenario": "list deploy directory → move artifact to backup → verify backup exists",
+      "_pattern": "linear",
+      "_thread": "source/destination_path thread T2→T3; entries from T1 confirms file was listed",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "list_deploy_directory",    "inputs": ["directory_path"], "outputs": ["entries"] },
+            { "id": "t2", "tool": "move_artifact_to_backup",  "inputs": ["source_path", "destination_path"], "outputs": ["moved"] },
+            { "id": "t3", "tool": "verify_backup_present",    "inputs": ["destination_path"], "outputs": ["is_present"] }
+          ],
+          "milestone": ["entries", "moved", "is_present"]
+        }]
+      },
+      "initial_context": {
+        "directory_path": "/tmp/os2ie_sandbox/deploy",
+        "source_path": "/tmp/os2ie_sandbox/deploy/app.sh",
+        "destination_path": "/tmp/os2ie_sandbox/backup/app.sh"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "list_directory", "key_inputs": ["directory_path"] },
+        "t2": { "compiled_tool": "move_file",      "key_inputs": ["source_path", "destination_path"] },
+        "t3": { "compiled_tool": "exists",         "key_inputs": ["destination_path->file_path"] }
+      }
+    },
+
+    {
+      "id": "tt4-01",
+      "_scenario": "check exists → delete stale → shell get date → create fresh file with date",
+      "_pattern": "guard + shell_to_catalog",
+      "_thread": "is_present guards delete; shell stdout (today_date) flows to T4 content",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "check_output_exists",    "inputs": ["file_path"], "outputs": ["is_present"] },
+            { "id": "t2", "tool": "remove_stale_output",    "inputs": ["file_path"], "outputs": ["deleted"] },
+            { "id": "t3", "tool": "get_current_date",       "inputs": [], "outputs": ["today_date"] },
+            { "id": "t4", "tool": "write_dated_output",     "inputs": ["file_path", "content"], "outputs": ["success"] }
+          ],
+          "milestone": ["deleted", "today_date", "success"]
+        }]
+      },
+      "initial_context": {
+        "file_path": "/tmp/os2ie_sandbox/result.txt"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "exists",            "key_inputs": ["file_path"] },
+        "t2": { "compiled_tool": "delete_file",       "key_inputs": ["file_path"] },
+        "t3": { "compiled_tool": "run_shell_command", "key_inputs": [] },
+        "t4": { "compiled_tool": "create_file",       "key_inputs": ["file_path", "today_date->content"] }
+      }
+    },
+
+    {
+      "id": "tt4-02",
+      "_scenario": "read version file → delete old artifact → shell build with version → save build log",
+      "_pattern": "skip (text skips T2, used in T3 command) + shell_to_catalog",
+      "_thread": "text(version) from T1 skips T2 and flows into T3 shell command; stdout flows to T4",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "read_version_file",    "inputs": ["version_path"], "outputs": ["text"] },
+            { "id": "t2", "tool": "remove_old_artifact",  "inputs": ["artifact_path"], "outputs": ["deleted"] },
+            { "id": "t3", "tool": "run_versioned_build",  "inputs": ["working_directory", "text"], "outputs": ["build_output"] },
+            { "id": "t4", "tool": "save_build_log",       "inputs": ["log_path", "content"], "outputs": ["success"] }
+          ],
+          "milestone": ["text", "deleted", "build_output", "success"]
+        }]
+      },
+      "initial_context": {
+        "version_path": "/tmp/os2ie_sandbox/version.txt",
+        "artifact_path": "/tmp/os2ie_sandbox/app-old.tar.gz",
+        "working_directory": "/tmp/os2ie_sandbox/project",
+        "log_path": "/tmp/os2ie_sandbox/build.log"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "read_file",         "key_inputs": ["version_path->file_path"] },
+        "t2": { "compiled_tool": "delete_file",       "key_inputs": ["artifact_path->file_path"] },
+        "t3": { "compiled_tool": "run_shell_command", "key_inputs": ["working_directory->command", "text->command"] },
+        "t4": { "compiled_tool": "create_file",       "key_inputs": ["log_path->file_path", "build_output->content"] }
+      }
+    },
+
+    {
+      "id": "tt4-03",
+      "_scenario": "make workspace → copy source → read source → write line count report",
+      "_pattern": "fan_in (T2 destination_path + T3 text both needed for T4)",
+      "_thread": "destination_path threads T2→T3 as file_path; text from T3 flows to T4 content",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "create_workspace_directory", "inputs": ["directory_path"], "outputs": ["created"] },
+            { "id": "t2", "tool": "copy_source_to_workspace",   "inputs": ["source_path", "destination_path"], "outputs": ["copied"] },
+            { "id": "t3", "tool": "read_workspace_source",      "inputs": ["destination_path"], "outputs": ["text"] },
+            { "id": "t4", "tool": "write_analysis_report",      "inputs": ["report_path", "content"], "outputs": ["success"] }
+          ],
+          "milestone": ["created", "copied", "text", "success"]
+        }]
+      },
+      "initial_context": {
+        "directory_path": "/tmp/os2ie_sandbox/workspace",
+        "source_path": "/tmp/os2ie_sandbox/main.py",
+        "destination_path": "/tmp/os2ie_sandbox/workspace/main.py",
+        "report_path": "/tmp/os2ie_sandbox/workspace/report.txt"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "make_directory", "key_inputs": ["directory_path"] },
+        "t2": { "compiled_tool": "copy_file",      "key_inputs": ["source_path", "destination_path"] },
+        "t3": { "compiled_tool": "read_file",      "key_inputs": ["destination_path->file_path"] },
+        "t4": { "compiled_tool": "create_file",    "key_inputs": ["report_path->file_path", "text->content"] }
+      }
+    },
+
+    {
+      "id": "tt4-04",
+      "_scenario": "shell run tests → read existing report → append new results → verify report",
+      "_pattern": "shell first + fan_in (stdout + existing text both in state at T3)",
+      "_thread": "stdout from T1 flows to T3 content; file_path threads T2→T3→T4",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "run_test_suite",          "inputs": ["working_directory"], "outputs": ["test_output"] },
+            { "id": "t2", "tool": "read_existing_report",    "inputs": ["report_path"], "outputs": ["text"] },
+            { "id": "t3", "tool": "append_test_results",     "inputs": ["report_path", "content"], "outputs": ["success"] },
+            { "id": "t4", "tool": "confirm_report_updated",  "inputs": ["report_path"], "outputs": ["is_present"] }
+          ],
+          "milestone": ["test_output", "success", "is_present"]
+        }]
+      },
+      "initial_context": {
+        "working_directory": "/tmp/os2ie_sandbox/project",
+        "report_path": "/tmp/os2ie_sandbox/test_report.txt"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "run_shell_command", "key_inputs": ["working_directory->command"] },
+        "t2": { "compiled_tool": "read_file",         "key_inputs": ["report_path->file_path"] },
+        "t3": { "compiled_tool": "append_to_file",    "key_inputs": ["report_path->file_path", "test_output->content"] },
+        "t4": { "compiled_tool": "exists",            "key_inputs": ["report_path->file_path"] }
+      }
+    },
+
+    {
+      "id": "tt4-05",
+      "_scenario": "list source dir → shell grep for TODO → read first match → append to todo list",
+      "_pattern": "shell mid-chain + skip (entries from T1 informs T2 command, grep stdout informs T3)",
+      "_thread": "entries from T1 in state when T2 compiles; grep stdout flows to T3 and T4",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            { "id": "t1", "tool": "list_source_files",     "inputs": ["directory_path"], "outputs": ["entries"] },
+            { "id": "t2", "tool": "find_todo_comments",    "inputs": ["directory_path"], "outputs": ["todo_lines"] },
+            { "id": "t3", "tool": "read_todo_file",        "inputs": ["todo_path"], "outputs": ["text"] },
+            { "id": "t4", "tool": "append_new_todos",      "inputs": ["todo_path", "content"], "outputs": ["success"] }
+          ],
+          "milestone": ["entries", "todo_lines", "success"]
+        }]
+      },
+      "initial_context": {
+        "directory_path": "/tmp/os2ie_sandbox/src",
+        "todo_path": "/tmp/os2ie_sandbox/TODO.md"
+      },
+      "expected": {
+        "t1": { "compiled_tool": "list_directory",    "key_inputs": ["directory_path"] },
+        "t2": { "compiled_tool": "run_shell_command", "key_inputs": ["directory_path->command"] },
+        "t3": { "compiled_tool": "read_file",         "key_inputs": ["todo_path->file_path"] },
+        "t4": { "compiled_tool": "append_to_file",    "key_inputs": ["todo_path->file_path", "todo_lines->content"] }
+      }
+    }
+
+  ]
+}
