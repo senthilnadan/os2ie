@@ -61,7 +61,7 @@ def run(directory_path: str, state: dict | None = None) -> object:
     if state:
         initial_state.update(state)
     t2e = _stub("t1", directory_path)
-    return execute("List files", initial_state, _abstract_dstt(), t2e)
+    return execute("List files", initial_state, _abstract_dstt(), t2e, available_tools=[])
 
 
 # ---------------------------------------------------------------------------
