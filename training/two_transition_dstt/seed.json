@@ -1,36 +1,46 @@
 {
-  "_note": "Two-transition abstract DSTT seeds. Each seed has one segment with two transitions. The critical dimension being tested: T1 output keys land in state, T2 compilation sees the updated state and resolves its inputs from it. State threading is the pass criterion — not just that both transitions compile, but that context flows correctly between them.",
-
+  "_note": "Two-transition abstract DSTT seeds. Each seed has one segment with two transitions. The critical dimension being tested: T1 output keys land in state, T2 compilation sees the updated state and resolves its inputs from it. State threading is the pass criterion \u2014 not just that both transitions compile, but that context flows correctly between them.",
   "_state_threading_legend": {
     "initial_context": "base state at start of segment",
     "state_after_t1": "initial_context + T1 output keys merged in",
-    "state_after_t2": "state_after_t1 + T2 output keys merged in — final state"
+    "state_after_t2": "state_after_t1 + T2 output keys merged in \u2014 final state"
   },
-
   "seeds": [
-
     {
       "id": "tt01",
-      "_scenario": "read then write — text output of T1 flows as content input of T2",
-      "_thread": "t1.text → t2.content",
+      "_scenario": "read then write \u2014 text output of T1 flows as content input of T2",
+      "_thread": "t1.text \u2192 t2.content",
       "abstract_dstt": {
-        "segments": [{
-          "transitions": [
-            {
-              "id": "t1",
-              "tool": "read_source_file",
-              "inputs": ["source_path"],
-              "outputs": ["text"]
-            },
-            {
-              "id": "t2",
-              "tool": "write_output_file",
-              "inputs": ["destination_path", "content"],
-              "outputs": ["success"]
-            }
-          ],
-          "milestone": ["success"]
-        }]
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "read_source_file",
+                "inputs": [
+                  "source_path"
+                ],
+                "outputs": [
+                  "text"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "write_output_file",
+                "inputs": [
+                  "destination_path",
+                  "content"
+                ],
+                "outputs": [
+                  "success"
+                ]
+              }
+            ],
+            "milestone": [
+              "success"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "source_path": "/tmp/os2ie_sandbox/input.txt",
@@ -39,7 +49,9 @@
       "expected": {
         "t1": {
           "compiled_tool": "read_file",
-          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/input.txt" },
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/input.txt"
+          },
           "state_after": {
             "source_path": "/tmp/os2ie_sandbox/input.txt",
             "destination_path": "/tmp/os2ie_sandbox/output.txt",
@@ -50,7 +62,7 @@
           "compiled_tool": "create_file",
           "resolved_inputs": {
             "file_path": "/tmp/os2ie_sandbox/output.txt",
-            "content": "<from state: text — T1 output>"
+            "content": "<from state: text \u2014 T1 output>"
           },
           "state_after": {
             "source_path": "/tmp/os2ie_sandbox/input.txt",
@@ -59,31 +71,349 @@
             "success": true
           }
         }
-      }
-    },
-
-    {
-      "id": "tt02",
-      "_scenario": "make directory then create file — directory exists in state when T2 compiles",
-      "_thread": "t1.created in state → t2 compiles with knowledge directory exists",
-      "abstract_dstt": {
-        "segments": [{
-          "transitions": [
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
             {
-              "id": "t1",
-              "tool": "create_output_directory",
-              "inputs": ["directory_path"],
-              "outputs": ["created"]
-            },
-            {
-              "id": "t2",
-              "tool": "write_report_file",
-              "inputs": ["file_path", "content"],
-              "outputs": ["success"]
+              "name": "file_path",
+              "type": "str"
             }
           ],
-          "milestone": ["success"]
-        }]
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tt02",
+      "_scenario": "make directory then create file \u2014 directory exists in state when T2 compiles",
+      "_thread": "t1.created in state \u2192 t2 compiles with knowledge directory exists",
+      "abstract_dstt": {
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "create_output_directory",
+                "inputs": [
+                  "directory_path"
+                ],
+                "outputs": [
+                  "created"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "write_report_file",
+                "inputs": [
+                  "file_path",
+                  "content"
+                ],
+                "outputs": [
+                  "success"
+                ]
+              }
+            ],
+            "milestone": [
+              "success"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "directory_path": "/tmp/os2ie_sandbox/reports",
@@ -93,7 +423,9 @@
       "expected": {
         "t1": {
           "compiled_tool": "make_directory",
-          "resolved_inputs": { "directory_path": "/tmp/os2ie_sandbox/reports" },
+          "resolved_inputs": {
+            "directory_path": "/tmp/os2ie_sandbox/reports"
+          },
           "state_after": {
             "directory_path": "/tmp/os2ie_sandbox/reports",
             "file_path": "/tmp/os2ie_sandbox/reports/summary.txt",
@@ -115,31 +447,350 @@
             "success": true
           }
         }
-      }
-    },
-
-    {
-      "id": "tt03",
-      "_scenario": "copy then verify — destination_path from context used as file_path in T2",
-      "_thread": "t1.copied in state → t2 checks destination_path from initial context",
-      "abstract_dstt": {
-        "segments": [{
-          "transitions": [
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
             {
-              "id": "t1",
-              "tool": "backup_config_file",
-              "inputs": ["source_path", "destination_path"],
-              "outputs": ["copied"]
-            },
-            {
-              "id": "t2",
-              "tool": "verify_backup_exists",
-              "inputs": ["file_path"],
-              "outputs": ["is_present"]
+              "name": "file_path",
+              "type": "str"
             }
           ],
-          "milestone": ["copied", "is_present"]
-        }]
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tt03",
+      "_scenario": "copy then verify \u2014 destination_path from context used as file_path in T2",
+      "_thread": "t1.copied in state \u2192 t2 checks destination_path from initial context",
+      "abstract_dstt": {
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "backup_config_file",
+                "inputs": [
+                  "source_path",
+                  "destination_path"
+                ],
+                "outputs": [
+                  "copied"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "verify_backup_exists",
+                "inputs": [
+                  "file_path"
+                ],
+                "outputs": [
+                  "is_present"
+                ]
+              }
+            ],
+            "milestone": [
+              "copied",
+              "is_present"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "source_path": "/tmp/os2ie_sandbox/config.yaml",
@@ -173,31 +824,348 @@
             "is_present": true
           }
         }
-      }
-    },
-
-    {
-      "id": "tt04",
-      "_scenario": "check exists then delete — is_present in state, file_path flows to T2",
-      "_thread": "t1.is_present → state; file_path from initial context flows to t2",
-      "abstract_dstt": {
-        "segments": [{
-          "transitions": [
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
             {
-              "id": "t1",
-              "tool": "check_old_artifact_exists",
-              "inputs": ["file_path"],
-              "outputs": ["is_present"]
-            },
-            {
-              "id": "t2",
-              "tool": "remove_old_artifact",
-              "inputs": ["file_path"],
-              "outputs": ["deleted"]
+              "name": "file_path",
+              "type": "str"
             }
           ],
-          "milestone": ["deleted"]
-        }]
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tt04",
+      "_scenario": "check exists then delete \u2014 is_present in state, file_path flows to T2",
+      "_thread": "t1.is_present \u2192 state; file_path from initial context flows to t2",
+      "abstract_dstt": {
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "check_old_artifact_exists",
+                "inputs": [
+                  "file_path"
+                ],
+                "outputs": [
+                  "is_present"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "remove_old_artifact",
+                "inputs": [
+                  "file_path"
+                ],
+                "outputs": [
+                  "deleted"
+                ]
+              }
+            ],
+            "milestone": [
+              "deleted"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz"
@@ -205,7 +1173,9 @@
       "expected": {
         "t1": {
           "compiled_tool": "exists",
-          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz" },
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz"
+          },
           "state_after": {
             "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz",
             "is_present": true
@@ -213,38 +1183,358 @@
         },
         "t2": {
           "compiled_tool": "delete_file",
-          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz" },
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz"
+          },
           "state_after": {
             "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz",
             "is_present": true,
             "deleted": true
           }
         }
-      }
-    },
-
-    {
-      "id": "tt05",
-      "_scenario": "list directory then read a known file — entries in state, file_path from context",
-      "_thread": "t1.entries → state; t2 compiles with entries available as context",
-      "abstract_dstt": {
-        "segments": [{
-          "transitions": [
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
             {
-              "id": "t1",
-              "tool": "list_project_files",
-              "inputs": ["directory_path"],
-              "outputs": ["entries"]
-            },
-            {
-              "id": "t2",
-              "tool": "read_readme",
-              "inputs": ["file_path"],
-              "outputs": ["text"]
+              "name": "file_path",
+              "type": "str"
             }
           ],
-          "milestone": ["entries", "text"]
-        }]
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tt05",
+      "_scenario": "list directory then read a known file \u2014 entries in state, file_path from context",
+      "_thread": "t1.entries \u2192 state; t2 compiles with entries available as context",
+      "abstract_dstt": {
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "list_project_files",
+                "inputs": [
+                  "directory_path"
+                ],
+                "outputs": [
+                  "entries"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "read_readme",
+                "inputs": [
+                  "file_path"
+                ],
+                "outputs": [
+                  "text"
+                ]
+              }
+            ],
+            "milestone": [
+              "entries",
+              "text"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "directory_path": "/tmp/os2ie_sandbox/project",
@@ -260,44 +1550,372 @@
           "state_after": {
             "directory_path": "/tmp/os2ie_sandbox/project",
             "file_path": "/tmp/os2ie_sandbox/project/README.md",
-            "entries": ["README.md", "src", "tests"]
+            "entries": [
+              "README.md",
+              "src",
+              "tests"
+            ]
           }
         },
         "t2": {
           "compiled_tool": "read_file",
-          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/project/README.md" },
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/project/README.md"
+          },
           "state_after": {
             "directory_path": "/tmp/os2ie_sandbox/project",
             "file_path": "/tmp/os2ie_sandbox/project/README.md",
-            "entries": ["README.md", "src", "tests"],
+            "entries": [
+              "README.md",
+              "src",
+              "tests"
+            ],
             "text": "<content of README.md>"
           }
         }
-      }
-    },
-
-    {
-      "id": "tt06",
-      "_scenario": "read then append — text from T1 flows as content to T2 append",
-      "_thread": "t1.text → t2.content",
-      "abstract_dstt": {
-        "segments": [{
-          "transitions": [
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
             {
-              "id": "t1",
-              "tool": "read_log_entry",
-              "inputs": ["source_path"],
-              "outputs": ["text"]
-            },
-            {
-              "id": "t2",
-              "tool": "append_to_archive",
-              "inputs": ["file_path", "content"],
-              "outputs": ["success"]
+              "name": "file_path",
+              "type": "str"
             }
           ],
-          "milestone": ["success"]
-        }]
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tt06",
+      "_scenario": "read then append \u2014 text from T1 flows as content to T2 append",
+      "_thread": "t1.text \u2192 t2.content",
+      "abstract_dstt": {
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "read_log_entry",
+                "inputs": [
+                  "source_path"
+                ],
+                "outputs": [
+                  "text"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "append_to_archive",
+                "inputs": [
+                  "file_path",
+                  "content"
+                ],
+                "outputs": [
+                  "success"
+                ]
+              }
+            ],
+            "milestone": [
+              "success"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "source_path": "/tmp/os2ie_sandbox/today.log",
@@ -306,7 +1924,9 @@
       "expected": {
         "t1": {
           "compiled_tool": "read_file",
-          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/today.log" },
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/today.log"
+          },
           "state_after": {
             "source_path": "/tmp/os2ie_sandbox/today.log",
             "file_path": "/tmp/os2ie_sandbox/archive.log",
@@ -317,7 +1937,7 @@
           "compiled_tool": "append_to_file",
           "resolved_inputs": {
             "file_path": "/tmp/os2ie_sandbox/archive.log",
-            "content": "<from state: text — T1 output>"
+            "content": "<from state: text \u2014 T1 output>"
           },
           "state_after": {
             "source_path": "/tmp/os2ie_sandbox/today.log",
@@ -326,31 +1946,349 @@
             "success": true
           }
         }
-      }
-    },
-
-    {
-      "id": "tt07",
-      "_scenario": "make backup directory then move file into it — created in state, paths from context",
-      "_thread": "t1.created → state; source_path and destination_path from context flow to t2",
-      "abstract_dstt": {
-        "segments": [{
-          "transitions": [
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
             {
-              "id": "t1",
-              "tool": "create_backup_directory",
-              "inputs": ["directory_path"],
-              "outputs": ["created"]
-            },
-            {
-              "id": "t2",
-              "tool": "move_artifact_to_backup",
-              "inputs": ["source_path", "destination_path"],
-              "outputs": ["moved"]
+              "name": "file_path",
+              "type": "str"
             }
           ],
-          "milestone": ["moved"]
-        }]
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tt07",
+      "_scenario": "make backup directory then move file into it \u2014 created in state, paths from context",
+      "_thread": "t1.created \u2192 state; source_path and destination_path from context flow to t2",
+      "abstract_dstt": {
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "create_backup_directory",
+                "inputs": [
+                  "directory_path"
+                ],
+                "outputs": [
+                  "created"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "move_artifact_to_backup",
+                "inputs": [
+                  "source_path",
+                  "destination_path"
+                ],
+                "outputs": [
+                  "moved"
+                ]
+              }
+            ],
+            "milestone": [
+              "moved"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "directory_path": "/tmp/os2ie_sandbox/backup",
@@ -360,7 +2298,9 @@
       "expected": {
         "t1": {
           "compiled_tool": "make_directory",
-          "resolved_inputs": { "directory_path": "/tmp/os2ie_sandbox/backup" },
+          "resolved_inputs": {
+            "directory_path": "/tmp/os2ie_sandbox/backup"
+          },
           "state_after": {
             "directory_path": "/tmp/os2ie_sandbox/backup",
             "source_path": "/tmp/os2ie_sandbox/deploy.sh",
@@ -382,31 +2322,350 @@
             "moved": true
           }
         }
-      }
-    },
-
-    {
-      "id": "tt08",
-      "_scenario": "delete stale file then create fresh one — deleted in state, fresh content written",
-      "_thread": "t1.deleted → state; file_path and content from context flow to t2",
-      "abstract_dstt": {
-        "segments": [{
-          "transitions": [
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
             {
-              "id": "t1",
-              "tool": "remove_stale_output",
-              "inputs": ["file_path"],
-              "outputs": ["deleted"]
-            },
-            {
-              "id": "t2",
-              "tool": "write_fresh_output",
-              "inputs": ["file_path", "content"],
-              "outputs": ["success"]
+              "name": "file_path",
+              "type": "str"
             }
           ],
-          "milestone": ["deleted", "success"]
-        }]
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tt08",
+      "_scenario": "delete stale file then create fresh one \u2014 deleted in state, fresh content written",
+      "_thread": "t1.deleted \u2192 state; file_path and content from context flow to t2",
+      "abstract_dstt": {
+        "segments": [
+          {
+            "transitions": [
+              {
+                "id": "t1",
+                "tool": "remove_stale_output",
+                "inputs": [
+                  "file_path"
+                ],
+                "outputs": [
+                  "deleted"
+                ]
+              },
+              {
+                "id": "t2",
+                "tool": "write_fresh_output",
+                "inputs": [
+                  "file_path",
+                  "content"
+                ],
+                "outputs": [
+                  "success"
+                ]
+              }
+            ],
+            "milestone": [
+              "deleted",
+              "success"
+            ]
+          }
+        ]
       },
       "initial_context": {
         "file_path": "/tmp/os2ie_sandbox/result.txt",
@@ -415,7 +2674,9 @@
       "expected": {
         "t1": {
           "compiled_tool": "delete_file",
-          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/result.txt" },
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/result.txt"
+          },
           "state_after": {
             "file_path": "/tmp/os2ie_sandbox/result.txt",
             "content": "v2 build output",
@@ -435,8 +2696,313 @@
             "success": true
           }
         }
-      }
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a single file or directory exists at the given path. Returns is_present=true if the path exists, false otherwise. Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (files and subdirectories). Set recursive=true to include all nested entries. Returns names only \u2014 does NOT read file content, count files, search for patterns, filter by extension, or compute any metrics.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full raw text content of a file and return it as a string. Use this when you need the content of a file to pass to a subsequent step. Does NOT count lines, search for patterns, parse structure, compute checksums, validate syntax, or process the content in any way.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Write content to a file, creating it if it does not exist and overwriting it if it does. Parent directories are created automatically. Does NOT append \u2014 use append_to_file for that. Does NOT execute the file or validate its content.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append a string to the end of an existing file without overwriting it. Does NOT create the file if it does not exist \u2014 use create_file for that.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file at the given path. Returns deleted=false (not an error) if the file does not exist. Does NOT delete directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a single file from source_path to destination_path, preserving content and metadata. Does NOT copy directories. Does NOT move or rename \u2014 use move_file for that.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a single file from source_path to destination_path. Does NOT copy directories. Does NOT copy \u2014 use copy_file to keep the original.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory at the given path, including any missing parent directories. Does NOT create files inside the directory. Does NOT run scripts, initialise projects, copy files, or execute any commands. Does NOT remove directories \u2014 use remove_directory for that.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory at the given path. Set recursive=true to remove non-empty directories including all contents. Does NOT remove individual files \u2014 use delete_file for that.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "run_shell_command",
+          "description": "Execute an arbitrary shell command and capture stdout, stderr, and return_code. Use this ONLY when no other catalog tool can fulfil the task \u2014 for example: counting lines (wc), searching content (grep), compressing files (tar/zip), checking system state (df, ps, git), running scripts or compilers, or any operation that requires a shell. Do NOT use this when exists, read_file, list_directory, create_file, copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
+          "signature": {
+            "inputs": [
+              "command"
+            ],
+            "outputs": [
+              "stdout",
+              "stderr",
+              "return_code"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "command",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "stdout",
+              "type": "str"
+            },
+            {
+              "name": "stderr",
+              "type": "str"
+            },
+            {
+              "name": "return_code",
+              "type": "int"
+            }
+          ]
+        }
+      ]
     }
-
   ]
 }
