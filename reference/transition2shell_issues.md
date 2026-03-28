@@ -4,20 +4,23 @@
 **Model:** `qwen2.5:7b`
 **Tested:** 2026-03-28
 **Baseline:** 20/20 passing
-**Negative suite (v1):** 9/15 passing — 6 failures
-**Negative suite (v2):** 8/11 passing — 3 failures
+**Negative suite (v1):** 14/15 passing — 1 remaining failure (n07, deferred)
+**Negative suite (v2):** 8/11 passing — 3 failures (see below)
+**Total:** 34/35
 
 ---
 
 ## Summary
 
-From v1 (15 seeds): all 6 failures are **false positives** — the service returns `status: ok`
-with a `script_description` when it should return `status: not_capable`.
+Issues 1–3 (from v1) resolved by the Transition2Shell service team. 5 of 6 v1 failures fixed.
 
-From v2 (11 seeds): 1 **false negative** (task refused when it should be ok) and 2 **context
-injection failures** (placeholder variable names used instead of actual context values).
+**Remaining open:** n07 (`transform_file`) — deferred to v2 chain-of-thought roadmap item.
+The model correctly identifies "transform" is vague but falls back to `cp` rather than
+returning `not_capable`. A single-pass prompt cannot reliably block this — the model always
+has a justification when a file path is present. Fix requires a CoT reasoning step.
 
-Five distinct failure modes identified across both suites.
+**v2 failures** (Issues 4–5): context value injection and intent bias — both deferred to v2
+two-pass architecture. Not actionable in single-pass.
 
 ---
 
