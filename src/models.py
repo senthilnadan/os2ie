@@ -53,6 +53,16 @@ class ExecutableDSTT(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Transition2Shell response model
+# ---------------------------------------------------------------------------
+
+class Transition2ShellResult(BaseModel):
+    status: str                          # "ok" | "not_capable"
+    script_description: str | None = None  # present when status="ok"
+    reason: str | None = None            # present when status="not_capable"
+
+
+# ---------------------------------------------------------------------------
 # ExecutionResult — working contract between taskexecutor and the DSTT runtime.
 #
 # NOTE: This is a pragmatic interface defined in the absence of the DSTT runtime.

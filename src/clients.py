@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
 import requests
-from .models import AbstractDSTT, AbstractTransition, ExecutableDSTT
+from .models import AbstractDSTT, AbstractTransition, ExecutableDSTT, Transition2ShellResult
 
 
 class Task2PlanClient:
@@ -45,3 +45,34 @@ class Transition2ExecClient:
         resp.raise_for_status()
         data = resp.json()
         return ExecutableDSTT(**data["executable_dstt"]), data.get("meta", {})
+
+
+class Transition2ShellClient:
+    def __init__(self, base_url: str):
+        self._url = f"{base_url.rstrip('/')}/transition2shell"
+
+    def compile(
+        self,
+        task: str,
+        intent: str,
+        inputs: list[str],
+        outputs: list[str],
+        context: dict[str, Any],
+    ) -> Transition2ShellResult:
+        """
+        Assess whether the intent can be implemented as a shell script and,
+        if so, return a script_description. Assembly of the ExecutableTransition
+        is the caller's (CreateTransitionHandler's) responsibility.
+        """
+        resp = requests.post(
+            self._url,
+            json={
+                "task": task,
+                "intent": intent,
+                "inputs": inputs,
+                "outputs": outputs,
+                "context": context,
+            },
+        )
+        resp.raise_for_status()
+        return Transition2ShellResult(**resp.json())

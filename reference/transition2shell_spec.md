@@ -125,10 +125,12 @@ key into state.
 `CreateTransitionHandler` owns the assembly of the `ExecutableTransition`.
 
 ```python
-# CreateTransitionHandler extracts intent hints — never passes the full transition
+# Transition2ShellClient.compile() signature:
+#   compile(task, intent, inputs, outputs, context) -> Transition2ShellResult
+
 result = t2s.compile(
     task=task,
-    intent=abstract_transition.tool,
+    intent=abstract_transition.tool,   # abstract tool name as intent signal
     inputs=abstract_transition.inputs,
     outputs=abstract_transition.outputs,
     context=state,
@@ -146,6 +148,15 @@ executable_transition = ExecutableTransition(
     output_binding=_bind_shell_outputs(abstract_transition.outputs),
 )
 return EscapeToShell(executable_transition=executable_transition, ...)
+```
+
+## Response model (src/models.py)
+
+```python
+class Transition2ShellResult(BaseModel):
+    status: str                            # "ok" | "not_capable"
+    script_description: str | None = None  # present when status="ok"
+    reason: str | None = None              # present when status="not_capable"
 ```
 
 ---
