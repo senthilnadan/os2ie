@@ -37,17 +37,19 @@ Given an abstract transition that could not be mapped by `transition2exec`,
 
 ### Request
 
+Decomposed hints from the abstract transition — not the full transition object.
+The shell scripter reasons from intent signals, not structured agent metadata.
+
 ```json
 {
   "task": "user-level task description",
-  "abstract_transition": {
-    "id": "t1",
-    "tool": "abstract_tool_name",
-    "inputs": ["input_key_1", "input_key_2"],
-    "outputs": ["output_key_1"],
-    "output_type": {"output_key_1": "str"}
-  },
-  "context": {}
+  "intent": "abstract_tool_name",
+  "inputs": ["input_key_1", "input_key_2"],
+  "outputs": ["output_key_1"],
+  "context": {
+    "input_key_1": "value_from_state",
+    "input_key_2": "value_from_state"
+  }
 }
 ```
 
@@ -123,7 +125,14 @@ key into state.
 `CreateTransitionHandler` owns the assembly of the `ExecutableTransition`.
 
 ```python
-result = t2s.compile(task, abstract_transition, context)
+# CreateTransitionHandler extracts intent hints — never passes the full transition
+result = t2s.compile(
+    task=task,
+    intent=abstract_transition.tool,
+    inputs=abstract_transition.inputs,
+    outputs=abstract_transition.outputs,
+    context=state,
+)
 
 if result.status == "not_capable":
     return Escalation(reason=result.reason, ...)
@@ -155,7 +164,7 @@ return EscapeToShell(executable_transition=executable_transition, ...)
 
 | Property | Value |
 |----------|-------|
-| Input | `task` + `abstract_transition` + `context` |
+| Input | `task` + `intent` + `inputs` + `outputs` + `context` |
 | Output (ok) | `script_description: str` |
 | Output (not_capable) | `status: not_capable` + `reason` |
 | Tool produced | always `run_shell_command` |
