@@ -161,14 +161,22 @@ in both modes. `exploration_tree` is the additional set produced by explore
 mode: tools tried, alternatives considered, paths taken during execution.
 
 ### compile_dstt  ← we are here
-Abstract DSTT → Executable DSTT. Compile only — no dispatch, no state
-mutation from tools.
+`user_task → ExecutableDSTT + available_tools`
+
+Compile only — no dispatch, no state mutation from tools.
 
 - Calls `transition2exec` for every abstract transition
 - Accumulates grounded transitions into a fully compiled executable DSTT
 - Output: `ExecutableDSTT` + `available_tools`
 - not_mappable → Path A (CreateTransitionHandler: shell fallback → escalation)
 - No tool errors possible — nothing is dispatched
+
+**Portability property (1-to-M):**
+The compiled output is not bound to the agent that produced it. Any agent
+capable of executing the tools in `available_tools` can pick up the
+`ExecutableDSTT` and execute it — now or in the future — as long as the
+user task is equivalent. One compiled DSTT, M capable agents, each free
+to choose their own execution path.
 
 ### explore
 Execute AND produce an executable DSTT + exploration set.
