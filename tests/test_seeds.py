@@ -5,21 +5,23 @@ Each test calls the real task2plan and transition2exec services and asserts
 on observable outcomes (filesystem state, shell output). No hardcoded DSTTs.
 
 Requires both services to be running:
-  task2plan      http://127.0.0.1:8000
-  transition2exec http://127.0.0.1:8001
+  task2plan      http://127.0.0.1:8005
+  transition2exec http://127.0.0.1:8000
 """
 from __future__ import annotations
 import pytest
 from src.clients import Task2PlanClient, Transition2ExecClient
+from src.catalog import build_catalog
 from src.kernel import execute
 
-T2P = Task2PlanClient("http://127.0.0.1:8000")
-T2E = Transition2ExecClient("http://127.0.0.1:8002")
+T2P = Task2PlanClient("http://127.0.0.1:8005")
+T2E = Transition2ExecClient("http://127.0.0.1:8000")
+CATALOG = build_catalog()
 
 
 def run(task: str, state: dict) -> object:
     abstract_dstt, meta = T2P.plan(task)
-    return execute(task, state, abstract_dstt, T2E)
+    return execute(task, state, abstract_dstt, T2E, available_tools=CATALOG)
 
 
 # ---------------------------------------------------------------------------

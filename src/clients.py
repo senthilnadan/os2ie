@@ -6,10 +6,14 @@ from .models import AbstractDSTT, AbstractTransition, ExecutableDSTT, Transition
 
 class Task2PlanClient:
     def __init__(self, base_url: str):
-        self._url = f"{base_url.rstrip('/')}/as_task2plan"
+        self._url = f"{base_url.rstrip('/')}/task2plan"
 
-    def plan(self, task: str) -> tuple[AbstractDSTT, dict[str, Any]]:
-        resp = requests.post(self._url, json={"user_task": task})
+    def plan(self, task: str, context: str = "", constraints: dict | None = None) -> tuple[AbstractDSTT, dict[str, Any]]:
+        resp = requests.post(self._url, json={
+            "task": task,
+            "context": context,
+            "constraints": constraints or {},
+        })
         resp.raise_for_status()
         data = resp.json()
         return AbstractDSTT(**data["abstract_dstt"]), data.get("meta", {})
