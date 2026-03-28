@@ -262,12 +262,18 @@ before the terminal `Escalation`. The kernel does not change — it receives
 `EscapeToShell`, `EscapeToCode`, `UserInputRequest`, or `Escalation` and
 acts accordingly.
 
-### Path A — EscapeToShell ✓ (current)
+### Path A — EscapeToShell ✓ (sealed — v1)
+**Scope freeze here.** Path A demonstrates fallback capability effectiveness:
+transition2exec not_mappable → Transition2Shell assessment → EscapeToShell or
+Escalation. 14/20 not_mappable scenarios recovered without escalation (70%).
+Transition2Code and HumanInteraction deferred to future branches.
+
+### Path A — EscapeToShell ✓ (sealed — v1)
 Shell scripter assesses whether the task can be implemented as a Unix shell
 command. Returns a `script_description`; handler assembles an `ExecutableTransition`
 with `run_shell_command`.
 
-### Path B (roadmap) — EscapeToCode
+### Path B (frozen — future) — EscapeToCode
 When the task requires logic that shell cannot express but a scripting runtime
 can. Example: "create a Python program to print helloWorld", or "parse this JSON
 and compute the sum of values."
@@ -280,7 +286,7 @@ script text, and the handler assembles an `ExecutableTransition` with a
 Ordered after shell — shell is tried first (lighter execution surface); code
 runtime is tried if shell cannot handle it.
 
-### Path C (roadmap) — EscapeToUserInput
+### Path C (frozen — future) — EscapeToUserInput / HumanInteraction
 When the system has enough context to know it *could* complete the task, but a
 required parameter is missing or ambiguous. Instead of a terminal `Escalation`,
 the handler fires a callback and suspends at that transition boundary.
