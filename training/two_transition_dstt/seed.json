@@ -1,0 +1,442 @@
+{
+  "_note": "Two-transition abstract DSTT seeds. Each seed has one segment with two transitions. The critical dimension being tested: T1 output keys land in state, T2 compilation sees the updated state and resolves its inputs from it. State threading is the pass criterion — not just that both transitions compile, but that context flows correctly between them.",
+
+  "_state_threading_legend": {
+    "initial_context": "base state at start of segment",
+    "state_after_t1": "initial_context + T1 output keys merged in",
+    "state_after_t2": "state_after_t1 + T2 output keys merged in — final state"
+  },
+
+  "seeds": [
+
+    {
+      "id": "tt01",
+      "_scenario": "read then write — text output of T1 flows as content input of T2",
+      "_thread": "t1.text → t2.content",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "read_source_file",
+              "inputs": ["source_path"],
+              "outputs": ["text"]
+            },
+            {
+              "id": "t2",
+              "tool": "write_output_file",
+              "inputs": ["destination_path", "content"],
+              "outputs": ["success"]
+            }
+          ],
+          "milestone": ["success"]
+        }]
+      },
+      "initial_context": {
+        "source_path": "/tmp/os2ie_sandbox/input.txt",
+        "destination_path": "/tmp/os2ie_sandbox/output.txt"
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "read_file",
+          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/input.txt" },
+          "state_after": {
+            "source_path": "/tmp/os2ie_sandbox/input.txt",
+            "destination_path": "/tmp/os2ie_sandbox/output.txt",
+            "text": "<content of input.txt>"
+          }
+        },
+        "t2": {
+          "compiled_tool": "create_file",
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/output.txt",
+            "content": "<from state: text — T1 output>"
+          },
+          "state_after": {
+            "source_path": "/tmp/os2ie_sandbox/input.txt",
+            "destination_path": "/tmp/os2ie_sandbox/output.txt",
+            "text": "<content of input.txt>",
+            "success": true
+          }
+        }
+      }
+    },
+
+    {
+      "id": "tt02",
+      "_scenario": "make directory then create file — directory exists in state when T2 compiles",
+      "_thread": "t1.created in state → t2 compiles with knowledge directory exists",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "create_output_directory",
+              "inputs": ["directory_path"],
+              "outputs": ["created"]
+            },
+            {
+              "id": "t2",
+              "tool": "write_report_file",
+              "inputs": ["file_path", "content"],
+              "outputs": ["success"]
+            }
+          ],
+          "milestone": ["success"]
+        }]
+      },
+      "initial_context": {
+        "directory_path": "/tmp/os2ie_sandbox/reports",
+        "file_path": "/tmp/os2ie_sandbox/reports/summary.txt",
+        "content": "Build complete."
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "make_directory",
+          "resolved_inputs": { "directory_path": "/tmp/os2ie_sandbox/reports" },
+          "state_after": {
+            "directory_path": "/tmp/os2ie_sandbox/reports",
+            "file_path": "/tmp/os2ie_sandbox/reports/summary.txt",
+            "content": "Build complete.",
+            "created": true
+          }
+        },
+        "t2": {
+          "compiled_tool": "create_file",
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/reports/summary.txt",
+            "content": "Build complete."
+          },
+          "state_after": {
+            "directory_path": "/tmp/os2ie_sandbox/reports",
+            "file_path": "/tmp/os2ie_sandbox/reports/summary.txt",
+            "content": "Build complete.",
+            "created": true,
+            "success": true
+          }
+        }
+      }
+    },
+
+    {
+      "id": "tt03",
+      "_scenario": "copy then verify — destination_path from context used as file_path in T2",
+      "_thread": "t1.copied in state → t2 checks destination_path from initial context",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "backup_config_file",
+              "inputs": ["source_path", "destination_path"],
+              "outputs": ["copied"]
+            },
+            {
+              "id": "t2",
+              "tool": "verify_backup_exists",
+              "inputs": ["file_path"],
+              "outputs": ["is_present"]
+            }
+          ],
+          "milestone": ["copied", "is_present"]
+        }]
+      },
+      "initial_context": {
+        "source_path": "/tmp/os2ie_sandbox/config.yaml",
+        "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml",
+        "file_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "copy_file",
+          "resolved_inputs": {
+            "source_path": "/tmp/os2ie_sandbox/config.yaml",
+            "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+          },
+          "state_after": {
+            "source_path": "/tmp/os2ie_sandbox/config.yaml",
+            "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml",
+            "file_path": "/tmp/os2ie_sandbox/backup/config.yaml",
+            "copied": true
+          }
+        },
+        "t2": {
+          "compiled_tool": "exists",
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+          },
+          "state_after": {
+            "source_path": "/tmp/os2ie_sandbox/config.yaml",
+            "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml",
+            "file_path": "/tmp/os2ie_sandbox/backup/config.yaml",
+            "copied": true,
+            "is_present": true
+          }
+        }
+      }
+    },
+
+    {
+      "id": "tt04",
+      "_scenario": "check exists then delete — is_present in state, file_path flows to T2",
+      "_thread": "t1.is_present → state; file_path from initial context flows to t2",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "check_old_artifact_exists",
+              "inputs": ["file_path"],
+              "outputs": ["is_present"]
+            },
+            {
+              "id": "t2",
+              "tool": "remove_old_artifact",
+              "inputs": ["file_path"],
+              "outputs": ["deleted"]
+            }
+          ],
+          "milestone": ["deleted"]
+        }]
+      },
+      "initial_context": {
+        "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz"
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "exists",
+          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz" },
+          "state_after": {
+            "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz",
+            "is_present": true
+          }
+        },
+        "t2": {
+          "compiled_tool": "delete_file",
+          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz" },
+          "state_after": {
+            "file_path": "/tmp/os2ie_sandbox/old_build.tar.gz",
+            "is_present": true,
+            "deleted": true
+          }
+        }
+      }
+    },
+
+    {
+      "id": "tt05",
+      "_scenario": "list directory then read a known file — entries in state, file_path from context",
+      "_thread": "t1.entries → state; t2 compiles with entries available as context",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "list_project_files",
+              "inputs": ["directory_path"],
+              "outputs": ["entries"]
+            },
+            {
+              "id": "t2",
+              "tool": "read_readme",
+              "inputs": ["file_path"],
+              "outputs": ["text"]
+            }
+          ],
+          "milestone": ["entries", "text"]
+        }]
+      },
+      "initial_context": {
+        "directory_path": "/tmp/os2ie_sandbox/project",
+        "file_path": "/tmp/os2ie_sandbox/project/README.md"
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "list_directory",
+          "resolved_inputs": {
+            "directory_path": "/tmp/os2ie_sandbox/project",
+            "recursive": false
+          },
+          "state_after": {
+            "directory_path": "/tmp/os2ie_sandbox/project",
+            "file_path": "/tmp/os2ie_sandbox/project/README.md",
+            "entries": ["README.md", "src", "tests"]
+          }
+        },
+        "t2": {
+          "compiled_tool": "read_file",
+          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/project/README.md" },
+          "state_after": {
+            "directory_path": "/tmp/os2ie_sandbox/project",
+            "file_path": "/tmp/os2ie_sandbox/project/README.md",
+            "entries": ["README.md", "src", "tests"],
+            "text": "<content of README.md>"
+          }
+        }
+      }
+    },
+
+    {
+      "id": "tt06",
+      "_scenario": "read then append — text from T1 flows as content to T2 append",
+      "_thread": "t1.text → t2.content",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "read_log_entry",
+              "inputs": ["source_path"],
+              "outputs": ["text"]
+            },
+            {
+              "id": "t2",
+              "tool": "append_to_archive",
+              "inputs": ["file_path", "content"],
+              "outputs": ["success"]
+            }
+          ],
+          "milestone": ["success"]
+        }]
+      },
+      "initial_context": {
+        "source_path": "/tmp/os2ie_sandbox/today.log",
+        "file_path": "/tmp/os2ie_sandbox/archive.log"
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "read_file",
+          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/today.log" },
+          "state_after": {
+            "source_path": "/tmp/os2ie_sandbox/today.log",
+            "file_path": "/tmp/os2ie_sandbox/archive.log",
+            "text": "<content of today.log>"
+          }
+        },
+        "t2": {
+          "compiled_tool": "append_to_file",
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/archive.log",
+            "content": "<from state: text — T1 output>"
+          },
+          "state_after": {
+            "source_path": "/tmp/os2ie_sandbox/today.log",
+            "file_path": "/tmp/os2ie_sandbox/archive.log",
+            "text": "<content of today.log>",
+            "success": true
+          }
+        }
+      }
+    },
+
+    {
+      "id": "tt07",
+      "_scenario": "make backup directory then move file into it — created in state, paths from context",
+      "_thread": "t1.created → state; source_path and destination_path from context flow to t2",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "create_backup_directory",
+              "inputs": ["directory_path"],
+              "outputs": ["created"]
+            },
+            {
+              "id": "t2",
+              "tool": "move_artifact_to_backup",
+              "inputs": ["source_path", "destination_path"],
+              "outputs": ["moved"]
+            }
+          ],
+          "milestone": ["moved"]
+        }]
+      },
+      "initial_context": {
+        "directory_path": "/tmp/os2ie_sandbox/backup",
+        "source_path": "/tmp/os2ie_sandbox/deploy.sh",
+        "destination_path": "/tmp/os2ie_sandbox/backup/deploy.sh"
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "make_directory",
+          "resolved_inputs": { "directory_path": "/tmp/os2ie_sandbox/backup" },
+          "state_after": {
+            "directory_path": "/tmp/os2ie_sandbox/backup",
+            "source_path": "/tmp/os2ie_sandbox/deploy.sh",
+            "destination_path": "/tmp/os2ie_sandbox/backup/deploy.sh",
+            "created": true
+          }
+        },
+        "t2": {
+          "compiled_tool": "move_file",
+          "resolved_inputs": {
+            "source_path": "/tmp/os2ie_sandbox/deploy.sh",
+            "destination_path": "/tmp/os2ie_sandbox/backup/deploy.sh"
+          },
+          "state_after": {
+            "directory_path": "/tmp/os2ie_sandbox/backup",
+            "source_path": "/tmp/os2ie_sandbox/deploy.sh",
+            "destination_path": "/tmp/os2ie_sandbox/backup/deploy.sh",
+            "created": true,
+            "moved": true
+          }
+        }
+      }
+    },
+
+    {
+      "id": "tt08",
+      "_scenario": "delete stale file then create fresh one — deleted in state, fresh content written",
+      "_thread": "t1.deleted → state; file_path and content from context flow to t2",
+      "abstract_dstt": {
+        "segments": [{
+          "transitions": [
+            {
+              "id": "t1",
+              "tool": "remove_stale_output",
+              "inputs": ["file_path"],
+              "outputs": ["deleted"]
+            },
+            {
+              "id": "t2",
+              "tool": "write_fresh_output",
+              "inputs": ["file_path", "content"],
+              "outputs": ["success"]
+            }
+          ],
+          "milestone": ["deleted", "success"]
+        }]
+      },
+      "initial_context": {
+        "file_path": "/tmp/os2ie_sandbox/result.txt",
+        "content": "v2 build output"
+      },
+      "expected": {
+        "t1": {
+          "compiled_tool": "delete_file",
+          "resolved_inputs": { "file_path": "/tmp/os2ie_sandbox/result.txt" },
+          "state_after": {
+            "file_path": "/tmp/os2ie_sandbox/result.txt",
+            "content": "v2 build output",
+            "deleted": true
+          }
+        },
+        "t2": {
+          "compiled_tool": "create_file",
+          "resolved_inputs": {
+            "file_path": "/tmp/os2ie_sandbox/result.txt",
+            "content": "v2 build output"
+          },
+          "state_after": {
+            "file_path": "/tmp/os2ie_sandbox/result.txt",
+            "content": "v2 build output",
+            "deleted": true,
+            "success": true
+          }
+        }
+      }
+    }
+
+  ]
+}
