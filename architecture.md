@@ -197,6 +197,31 @@ Tools are injected into the taskexecutor kernel at startup. The kernel dispatche
 by name only — it has no knowledge of what any tool does. This is the primary
 extension point for adding new capabilities.
 
+### Tool Adapters
+
+Every tool is wrapped by an adapter before registration. The adapter owns the
+execution lifecycle — pre-flight, dispatch, verification, and healing. The kernel
+always calls the adapter, never the tool directly.
+
+**General adapter** — for idempotent tools (read, exists, list, copy, move):
+- Pre-flight: validate inputs are present and correctly typed
+- Dispatch: call tool
+- On failure: safe to retry with corrected inputs, no side effects to undo
+
+**Special adapter** — for non-idempotent write tools (`create_file`, `append_to_file`):
+- Pre-flight: validate inputs (content non-empty, newline handling explicit, path writable)
+- Snapshot: read current file state before executing (rollback point stored in state)
+- Dispatch: call tool
+- Post-write verification: read back and compare against expected content
+- On mismatch: rollback from snapshot, surface as failure with corrected inputs
+- Rollback:
+  - `create_file` → restore previous content or delete if file was new
+  - `append_to_file` → truncate back to pre-append size using snapshot
+
+The special adapter makes write tools safe to reason about and retry — the healing
+path provides corrected inputs, the adapter handles the side effect lifecycle.
+The kernel has no knowledge of adapter type; dispatch is uniform by tool name.
+
 ### Subtask
 A tool in the registry that spawns a new kernel instance for a sub-problem.
 Takes `task`, `context`, and `parent_task` as inputs. Before executing, it checks
@@ -462,6 +487,85 @@ def run_subtask(task, context, parent_task):
     return call_taskexec(task, context, abstract_dstt, parent_task=parent_task)
 ```
 
+
+### DSTT Handler — Transition Failure Recovery
+
+Transition failures are owned by the DSTT handler (runtime level), not the
+executor and not the segment healer. The executor returns the failure signal;
+the DSTT handler decides the recovery strategy.
+
+**Two entry points, two cascades:**
+
+**A. No executable transition found (`not_mappable`):**
+```
+not_mappable
+  │
+  ├─ 1. Shell fallback
+  │       add run_shell_command to available_tools
+  │       retry transition2exec with task + state
+  │       if ok → hand back to executor, continue
+  │       if fails → next
+  │
+  ├─ 2. Other healing options
+  │       (domain-specific tools, alternate catalog, alternate model)
+  │       if ok → hand back to executor, continue
+  │       if fails → next
+  │
+  └─ 3. Escalate up the stack
+            surface to caller with full context
+            caller decides: provide missing context, delegate, or abort
+            execution suspended until caller responds
+```
+
+**B. Transition found but tool failed (tool error):**
+```
+tool error
+  │
+  ├─ 1. Reasoning repair             (idempotent tools only)
+  │       re-run transition2exec with error as additional context
+  │       "previous attempt: tool=X inputs=Y error=Z"
+  │       model corrects tool selection or inputs
+  │       retry dispatch via executor
+  │       if fails → next
+  │
+  ├─ 2. Shell fallback
+  │       add run_shell_command to available_tools
+  │       retry transition2exec with task + state + error context
+  │       hand back to executor to dispatch
+  │       if fails → next
+  │
+  └─ 3. Escalate up the stack
+            surface to caller with full context
+            caller decides: provide missing context, delegate, or abort
+            execution suspended until caller responds
+```
+
+**Precondition for write tools:** strategies 1 and 2 in cascade B are only
+available if the special adapter confirms rollback succeeded. If rollback
+failed, skip directly to escalation.
+
+**State machine extension:**
+```
+running → not_mappable  → dstt_handler → shell_fallback    → running
+                                       → other_healing      → running
+                                       → escalated          → resumed  → running
+                                                            → aborted  → failed
+
+running → tool_error    → dstt_handler → reasoning_repair  → running
+                                       → shell_fallback     → running
+                                       → escalated          → resumed  → running
+                                                            → aborted  → failed
+
+running → zero_segments → dstt_handler → escalated         → resumed  → running
+                                                            → aborted  → failed
+```
+
+The DSTT handler owns all failure modes — transition `not_mappable`, tool
+errors, and zero-segment scenarios. There is no separate segment healer.
+All recovery paths flow through the DSTT handler. Escalation is the terminal
+in every case — the caller decides to resume or abort.
+
+---
 
 ## 9. V2 Scope — Generation 2 Capabilities
 

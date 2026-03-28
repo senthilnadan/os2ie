@@ -12,6 +12,61 @@
     {
       "issue": 2,
       "title": "Stage 1 returns status=ok with wrong tool instead of not_mappable when no tool matches"
+    },
+    {
+      "issue": 3,
+      "title": "Stage 2 returns false not_mappable when abstract tool name is semantically distant — overrides a correct Stage 1 result",
+      "seeds": ["s01", "s03", "s05", "s06", "s07", "s09"],
+      "observed": "Stage 1 tool_plan in response context correctly identifies the grounded tool and resolves inputs. Stage 2 still returns status=not_mappable with empty segments. The correct tool_plan is preserved in executable_dstt.context.tool_plan but never promoted to a segment.",
+      "pattern": "Stage 1 selects tool X correctly. Abstract tool name is a domain verb that does not share tokens with the grounded tool name (e.g. 'duplicate_config' -> copy_file, 'retire_artifact' -> delete_file, 'initialize_workspace' -> make_directory). Stage 2 re-validates independently and rejects the mapping.",
+      "root_cause": "Stage 2 is doing both LLM re-validation of the tool selection AND programmatic DSTT formatting. When the abstract tool name has low lexical similarity to the grounded tool name, Stage 2's LLM pass concludes not_mappable — independently and contrary to Stage 1's result. The two stages are not a pipeline; they are competing.",
+      "contract_violation": "Stage 2's role is to FORMAT the executable DSTT from Stage 1's output. It is not supposed to re-validate tool selection. Stage 1 owns tool selection; Stage 2 owns formatting. Mixing the two makes Stage 2 LLM+program simultaneously, which is undefined behaviour.",
+      "ask": "Stage 2 should accept Stage 1's tool_plan as authoritative when tool_plan contains a valid grounded tool name (not 'not_mappable'). Stage 2 should only return not_mappable if Stage 1's tool_plan itself says TOOL: not_mappable.",
+      "workaround": "OS2IE detects the false not_mappable by checking executable_dstt.context.tool_plan. If tool_plan contains a valid TOOL name, OS2IE constructs the executable transition programmatically from the tool_plan string, bypassing Stage 2's rejection. The _healed_expected field in each affected stress seed records the correct output.",
+      "evidence": [
+        {
+          "seed": "s01",
+          "abstract_tool": "duplicate_config",
+          "grounded_tool": "copy_file",
+          "stage1_tool_plan": "TOOL: copy_file\nINPUTS: source_path=/tmp/os2ie_sandbox/config.yaml, destination_path=/tmp/os2ie_sandbox/backup/config.yaml",
+          "stage2_status": "not_mappable"
+        },
+        {
+          "seed": "s03",
+          "abstract_tool": "purge_build_artifacts",
+          "grounded_tool": "remove_directory",
+          "stage1_tool_plan": "TOOL: remove_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/old_build, recursive=true",
+          "stage2_status": "not_mappable"
+        },
+        {
+          "seed": "s05",
+          "abstract_tool": "initialize_workspace",
+          "grounded_tool": "make_directory",
+          "stage1_tool_plan": "TOOL: make_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/workspace",
+          "stage2_status": "not_mappable"
+        },
+        {
+          "seed": "s06",
+          "abstract_tool": "load_configuration",
+          "grounded_tool": "read_file",
+          "stage1_tool_plan": "TOOL: read_file\nINPUTS: file_path=/tmp/os2ie_sandbox/app.conf",
+          "stage2_status": "not_mappable"
+        },
+        {
+          "seed": "s07",
+          "abstract_tool": "retire_artifact",
+          "grounded_tool": "delete_file",
+          "stage1_tool_plan": "TOOL: delete_file\nINPUTS: file_path=/tmp/os2ie_sandbox/dist/app.tar.gz",
+          "stage2_status": "not_mappable"
+        },
+        {
+          "seed": "s09",
+          "abstract_tool": "fetch_report_contents",
+          "grounded_tool": "read_file",
+          "stage1_tool_plan": "TOOL: read_file\nINPUTS: file_path=/tmp/os2ie_sandbox/report.md",
+          "stage2_status": "not_mappable"
+        }
+      ]
     }
   ],
   "_root_cause": "_select_best_match falls back to templates[0] when all scores are 0 (no name token overlap). The selected tool has zero output key overlap with the abstract transition's required outputs. No programmatic guard exists to catch this.",
@@ -1434,6 +1489,157 @@
           "version": "0.1.0",
           "detail": "The request can be compiled, but key operational details were not provided."
         }
+      }
+    },
+    {
+      "_issue_ref": 3,
+      "id": "s01",
+      "_note": "Stage 1 tool_plan in context is correct. Stage 2 returns not_mappable anyway.",
+      "task": "Copy /tmp/os2ie_sandbox/config.yaml to /tmp/os2ie_sandbox/backup/config.yaml",
+      "context": {
+        "source_path": "/tmp/os2ie_sandbox/config.yaml",
+        "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "duplicate_config",
+        "inputs": ["source_path", "destination_path"],
+        "outputs": ["copied"],
+        "output_type": {"copied": "bool"}
+      },
+      "available_tools": [
+        {"name": "exists", "description": "Check whether a single file exists at the given path. Does NOT execute commands, check system state, or verify anything other than file presence.", "signature": {"inputs": ["file_path"], "outputs": ["is_present"]}, "inputs": [{"name": "file_path", "type": "str"}], "outputs": [{"name": "is_present", "type": "bool"}]},
+        {"name": "list_directory", "description": "List the contents of a directory. Set recursive=true to include all nested files and subdirectories. Set recursive=false to return immediate children only. Returns entry names only — does NOT count, filter, or search file contents.", "signature": {"inputs": ["directory_path", "recursive"], "outputs": ["entries"]}, "inputs": [{"name": "directory_path", "type": "str"}, {"name": "recursive", "type": "bool"}], "outputs": [{"name": "entries", "type": "list[str]"}]},
+        {"name": "read_file", "description": "Read the full text content of a file.", "signature": {"inputs": ["file_path"], "outputs": ["text"]}, "inputs": [{"name": "file_path", "type": "str"}], "outputs": [{"name": "text", "type": "str"}]},
+        {"name": "create_file", "description": "Create a file with the given content. Parent directories are created automatically. Overwrites if exists.", "signature": {"inputs": ["file_path", "content"], "outputs": ["success"]}, "inputs": [{"name": "file_path", "type": "str"}, {"name": "content", "type": "str"}], "outputs": [{"name": "success", "type": "bool"}]},
+        {"name": "append_to_file", "description": "Append text to the end of an existing file.", "signature": {"inputs": ["file_path", "content"], "outputs": ["success"]}, "inputs": [{"name": "file_path", "type": "str"}, {"name": "content", "type": "str"}], "outputs": [{"name": "success", "type": "bool"}]},
+        {"name": "delete_file", "description": "Delete a single file. Returns deleted=false (not an error) if the file does not exist.", "signature": {"inputs": ["file_path"], "outputs": ["deleted"]}, "inputs": [{"name": "file_path", "type": "str"}], "outputs": [{"name": "deleted", "type": "bool"}]},
+        {"name": "copy_file", "description": "Copy a file from source to destination, preserving metadata.", "signature": {"inputs": ["source_path", "destination_path"], "outputs": ["copied"]}, "inputs": [{"name": "source_path", "type": "str"}, {"name": "destination_path", "type": "str"}], "outputs": [{"name": "copied", "type": "bool"}]},
+        {"name": "move_file", "description": "Move or rename a file.", "signature": {"inputs": ["source_path", "destination_path"], "outputs": ["moved"]}, "inputs": [{"name": "source_path", "type": "str"}, {"name": "destination_path", "type": "str"}], "outputs": [{"name": "moved", "type": "bool"}]},
+        {"name": "make_directory", "description": "Create a directory, including any missing parent directories.", "signature": {"inputs": ["directory_path"], "outputs": ["created"]}, "inputs": [{"name": "directory_path", "type": "str"}], "outputs": [{"name": "created", "type": "bool"}]},
+        {"name": "remove_directory", "description": "Remove a directory. Set recursive=true to remove non-empty directories.", "signature": {"inputs": ["directory_path", "recursive"], "outputs": ["removed"]}, "inputs": [{"name": "directory_path", "type": "str"}, {"name": "recursive", "type": "bool"}], "outputs": [{"name": "removed", "type": "bool"}]}
+      ],
+      "expected_response": {
+        "executable_dstt": {"status": "ok", "segments": [{"transitions": [{"id": "t1", "tool": "copy_file", "inputs": {"source_path": "/tmp/os2ie_sandbox/config.yaml", "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml"}, "outputs": {"copied": null}}], "milestone": ["copied"]}]}
+      },
+      "actual_response": {
+        "executable_dstt": {"status": "not_mappable", "segments": [], "context": {"tool_plan": "TOOL: copy_file\nINPUTS: source_path=/tmp/os2ie_sandbox/config.yaml, destination_path=/tmp/os2ie_sandbox/backup/config.yaml"}},
+        "meta": {"status": "error", "model": "qwen2.5:7b", "version": "0.1.0", "detail": "Unable to map the abstract transition using the grounded tool catalog."}
+      }
+    },
+    {
+      "_issue_ref": 3,
+      "id": "s03",
+      "_note": "Stage 1 tool_plan in context is correct. Stage 2 returns not_mappable anyway.",
+      "task": "Remove the directory /tmp/os2ie_sandbox/old_build and all its contents",
+      "context": {"directory_path": "/tmp/os2ie_sandbox/old_build"},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "purge_build_artifacts",
+        "inputs": ["directory_path"],
+        "outputs": ["removed"],
+        "output_type": {"removed": "bool"}
+      },
+      "available_tools": "_same_as_s01",
+      "expected_response": {
+        "executable_dstt": {"status": "ok", "segments": [{"transitions": [{"id": "t1", "tool": "remove_directory", "inputs": {"directory_path": "/tmp/os2ie_sandbox/old_build", "recursive": "true"}, "outputs": {"removed": null}}], "milestone": ["removed"]}]}
+      },
+      "actual_response": {
+        "executable_dstt": {"status": "not_mappable", "segments": [], "context": {"tool_plan": "TOOL: remove_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/old_build, recursive=true"}},
+        "meta": {"status": "error", "model": "qwen2.5:7b", "version": "0.1.0", "detail": "Unable to map the abstract transition using the grounded tool catalog."}
+      }
+    },
+    {
+      "_issue_ref": 3,
+      "id": "s05",
+      "_note": "Stage 1 tool_plan in context is correct. Stage 2 returns not_mappable anyway.",
+      "task": "Initialize the workspace by creating the directory /tmp/os2ie_sandbox/workspace",
+      "context": {"directory_path": "/tmp/os2ie_sandbox/workspace"},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "initialize_workspace",
+        "inputs": ["directory_path"],
+        "outputs": ["created"],
+        "output_type": {"created": "bool"}
+      },
+      "available_tools": "_same_as_s01",
+      "expected_response": {
+        "executable_dstt": {"status": "ok", "segments": [{"transitions": [{"id": "t1", "tool": "make_directory", "inputs": {"directory_path": "/tmp/os2ie_sandbox/workspace"}, "outputs": {"created": null}}], "milestone": ["created"]}]}
+      },
+      "actual_response": {
+        "executable_dstt": {"status": "not_mappable", "segments": [], "context": {"tool_plan": "TOOL: make_directory\nINPUTS: directory_path=/tmp/os2ie_sandbox/workspace"}},
+        "meta": {"status": "error", "model": "qwen2.5:7b", "version": "0.1.0", "detail": "Unable to map the abstract transition using the grounded tool catalog."}
+      }
+    },
+    {
+      "_issue_ref": 3,
+      "id": "s06",
+      "_note": "Stage 1 tool_plan in context is correct. Stage 2 returns not_mappable anyway.",
+      "task": "Load the configuration from /tmp/os2ie_sandbox/app.conf",
+      "context": {"file_path": "/tmp/os2ie_sandbox/app.conf"},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "load_configuration",
+        "inputs": ["file_path"],
+        "outputs": ["text"],
+        "output_type": {"text": "str"}
+      },
+      "available_tools": "_same_as_s01",
+      "expected_response": {
+        "executable_dstt": {"status": "ok", "segments": [{"transitions": [{"id": "t1", "tool": "read_file", "inputs": {"file_path": "/tmp/os2ie_sandbox/app.conf"}, "outputs": {"text": null}}], "milestone": ["text"]}]}
+      },
+      "actual_response": {
+        "executable_dstt": {"status": "not_mappable", "segments": [], "context": {"tool_plan": "TOOL: read_file\nINPUTS: file_path=/tmp/os2ie_sandbox/app.conf"}},
+        "meta": {"status": "error", "model": "qwen2.5:7b", "version": "0.1.0", "detail": "Unable to map the abstract transition using the grounded tool catalog."}
+      }
+    },
+    {
+      "_issue_ref": 3,
+      "id": "s07",
+      "_note": "Stage 1 tool_plan in context is correct. Stage 2 returns not_mappable anyway.",
+      "task": "Retire the old artifact at /tmp/os2ie_sandbox/dist/app.tar.gz",
+      "context": {"file_path": "/tmp/os2ie_sandbox/dist/app.tar.gz"},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "retire_artifact",
+        "inputs": ["file_path"],
+        "outputs": ["deleted"],
+        "output_type": {"deleted": "bool"}
+      },
+      "available_tools": "_same_as_s01",
+      "expected_response": {
+        "executable_dstt": {"status": "ok", "segments": [{"transitions": [{"id": "t1", "tool": "delete_file", "inputs": {"file_path": "/tmp/os2ie_sandbox/dist/app.tar.gz"}, "outputs": {"deleted": null}}], "milestone": ["deleted"]}]}
+      },
+      "actual_response": {
+        "executable_dstt": {"status": "not_mappable", "segments": [], "context": {"tool_plan": "TOOL: delete_file\nINPUTS: file_path=/tmp/os2ie_sandbox/dist/app.tar.gz"}},
+        "meta": {"status": "error", "model": "qwen2.5:7b", "version": "0.1.0", "detail": "Unable to map the abstract transition using the grounded tool catalog."}
+      }
+    },
+    {
+      "_issue_ref": 3,
+      "id": "s09",
+      "_note": "Stage 1 tool_plan in context is correct. Stage 2 returns not_mappable anyway. Context has 4 keys — only file_path is relevant.",
+      "task": "Read the contents of /tmp/os2ie_sandbox/report.md",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/report.md",
+        "working_directory": "/tmp/os2ie_sandbox",
+        "last_run_status": "success",
+        "entry_count": 42
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "fetch_report_contents",
+        "inputs": ["file_path"],
+        "outputs": ["text"],
+        "output_type": {"text": "str"}
+      },
+      "available_tools": "_same_as_s01",
+      "expected_response": {
+        "executable_dstt": {"status": "ok", "segments": [{"transitions": [{"id": "t1", "tool": "read_file", "inputs": {"file_path": "/tmp/os2ie_sandbox/report.md"}, "outputs": {"text": null}}], "milestone": ["text"]}]}
+      },
+      "actual_response": {
+        "executable_dstt": {"status": "not_mappable", "segments": [], "context": {"tool_plan": "TOOL: read_file\nINPUTS: file_path=/tmp/os2ie_sandbox/report.md"}},
+        "meta": {"status": "error", "model": "qwen2.5:7b", "version": "0.1.0", "detail": "Unable to map the abstract transition using the grounded tool catalog."}
       }
     }
   ]

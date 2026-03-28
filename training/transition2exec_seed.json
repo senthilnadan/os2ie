@@ -726,6 +726,7 @@
     },
     {
       "id": "12a",
+      "_note": "run_shell_command is not in available_tools — this step is not_mappable; the DSTT handler's shell fallback handles it",
       "task": "Run 'echo hello_from_shell' and write its stdout to /tmp/os2ie_sandbox/out.txt",
       "context": {},
       "abstract_transition": {
@@ -740,10 +741,8 @@
         }
       },
       "expected": {
-        "tool": "run_shell_command",
-        "inputs": {
-          "command": "echo hello_from_shell"
-        }
+        "tool": "not_mappable",
+        "inputs": {}
       }
     },
     {
@@ -778,6 +777,7 @@
     },
     {
       "id": "15",
+      "_note": "run_shell_command is not in available_tools — not_mappable; DSTT handler's shell fallback owns this",
       "task": "Run the shell command 'exit 1'",
       "context": {},
       "abstract_transition": {
@@ -792,10 +792,8 @@
         }
       },
       "expected": {
-        "tool": "run_shell_command",
-        "inputs": {
-          "command": "exit 1"
-        }
+        "tool": "not_mappable",
+        "inputs": {}
       }
     }
   ]

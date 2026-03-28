@@ -1,0 +1,423 @@
+{
+  "_note": "Stress test seeds for transition2exec. available_tools is built at runtime from build_catalog(). These are tagged @pytest.mark.stress in the regression suite.",
+  "seeds": [
+    {
+      "id": "s01",
+      "_scenario": "Cat A — copy_file with domain-specific abstract tool name 'duplicate_config'",
+      "task": "Copy /tmp/os2ie_sandbox/config.yaml to /tmp/os2ie_sandbox/backup/config.yaml",
+      "context": {
+        "source_path": "/tmp/os2ie_sandbox/config.yaml",
+        "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "duplicate_config",
+        "inputs": ["source_path", "destination_path"],
+        "outputs": ["copied"],
+        "output_type": {"copied": "bool"}
+      },
+      "expected": {
+        "tool": "copy_file",
+        "inputs": {
+          "source_path": "/tmp/os2ie_sandbox/config.yaml",
+          "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+        }
+      }
+    },
+    {
+      "id": "s02",
+      "_scenario": "Cat A — move_file used for rename operation",
+      "task": "Rename /tmp/os2ie_sandbox/draft.txt to /tmp/os2ie_sandbox/final.txt",
+      "context": {
+        "source_path": "/tmp/os2ie_sandbox/draft.txt",
+        "destination_path": "/tmp/os2ie_sandbox/final.txt"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "rename_file",
+        "inputs": ["source_path", "destination_path"],
+        "outputs": ["renamed"],
+        "output_type": {"renamed": "bool"}
+      },
+      "expected": {
+        "tool": "move_file",
+        "inputs": {
+          "source_path": "/tmp/os2ie_sandbox/draft.txt",
+          "destination_path": "/tmp/os2ie_sandbox/final.txt"
+        }
+      }
+    },
+    {
+      "id": "s03",
+      "_scenario": "Cat A — remove_directory recursive=true with domain-specific abstract tool name 'purge_build_artifacts'",
+      "task": "Remove the directory /tmp/os2ie_sandbox/old_build and all its contents",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/old_build"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "purge_build_artifacts",
+        "inputs": ["directory_path"],
+        "outputs": ["removed"],
+        "output_type": {"removed": "bool"}
+      },
+      "expected": {
+        "tool": "remove_directory",
+        "inputs": {
+          "directory_path": "/tmp/os2ie_sandbox/old_build",
+          "recursive": "true"
+        }
+      }
+    },
+    {
+      "id": "s04",
+      "_scenario": "Cat B — tricky abstract name 'verify_file_present' -> exists",
+      "task": "Verify that /tmp/os2ie_sandbox/requirements.txt is present on disk",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/requirements.txt"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "verify_file_present",
+        "inputs": ["file_path"],
+        "outputs": ["is_present"],
+        "output_type": {"is_present": "bool"}
+      },
+      "expected": {
+        "tool": "exists",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/requirements.txt"
+        }
+      }
+    },
+    {
+      "id": "s05",
+      "_scenario": "Cat B — make_directory with domain-specific abstract tool name 'initialize_workspace'",
+      "task": "Initialize the workspace by creating the directory /tmp/os2ie_sandbox/workspace",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/workspace"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "initialize_workspace",
+        "inputs": ["directory_path"],
+        "outputs": ["created"],
+        "output_type": {"created": "bool"}
+      },
+      "expected": {
+        "tool": "make_directory",
+        "inputs": {
+          "directory_path": "/tmp/os2ie_sandbox/workspace"
+        }
+      }
+    },
+    {
+      "id": "s06",
+      "_scenario": "Cat B — read_file with domain-specific abstract tool name 'load_configuration'",
+      "task": "Load the configuration from /tmp/os2ie_sandbox/app.conf",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/app.conf"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "load_configuration",
+        "inputs": ["file_path"],
+        "outputs": ["text"],
+        "output_type": {"text": "str"}
+      },
+      "expected": {
+        "tool": "read_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/app.conf"
+        }
+      }
+    },
+    {
+      "id": "s07",
+      "_scenario": "Cat B — delete_file with domain-specific abstract tool name 'retire_artifact'",
+      "task": "Retire the old artifact at /tmp/os2ie_sandbox/dist/app.tar.gz",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/dist/app.tar.gz"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "retire_artifact",
+        "inputs": ["file_path"],
+        "outputs": ["deleted"],
+        "output_type": {"deleted": "bool"}
+      },
+      "expected": {
+        "tool": "delete_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/dist/app.tar.gz"
+        }
+      }
+    },
+    {
+      "id": "s08",
+      "_scenario": "Cat C — content must be extracted from task text (not in context); simple content without special chars",
+      "task": "Create /tmp/os2ie_sandbox/greeting.txt with content 'hello there'",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/greeting.txt"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "write_greeting_file",
+        "inputs": ["file_path", "content"],
+        "outputs": ["written"],
+        "output_type": {"written": "bool"}
+      },
+      "expected": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/greeting.txt",
+          "content": "hello there"
+        }
+      }
+    },
+    {
+      "id": "s09",
+      "_scenario": "Cat C — noisy context (irrelevant keys), only file_path is relevant; abstract tool name 'fetch_report_contents'",
+      "task": "Read the contents of /tmp/os2ie_sandbox/report.md",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/report.md",
+        "working_directory": "/tmp/os2ie_sandbox",
+        "last_run_status": "success",
+        "entry_count": 42
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "fetch_report_contents",
+        "inputs": ["file_path"],
+        "outputs": ["text"],
+        "output_type": {"text": "str"}
+      },
+      "expected": {
+        "tool": "read_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/report.md"
+        }
+      }
+    },
+    {
+      "id": "s10",
+      "_scenario": "Cat C — list_directory non-recursive (recursive=false explicit in task)",
+      "task": "List only the immediate children of /tmp/os2ie_sandbox/src (do not recurse)",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/src"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "list_top_level_entries",
+        "inputs": ["directory_path"],
+        "outputs": ["entries"],
+        "output_type": {"entries": "list[str]"}
+      },
+      "expected": {
+        "tool": "list_directory",
+        "inputs": {
+          "directory_path": "/tmp/os2ie_sandbox/src",
+          "recursive": "false"
+        }
+      }
+    },
+    {
+      "id": "s11",
+      "_scenario": "Cat C — multi-step context, prior step outputs present; pick correct key",
+      "task": "Copy /tmp/os2ie_sandbox/config.yaml to /tmp/os2ie_sandbox/backup/config.yaml, then verify the copy exists",
+      "context": {
+        "source_path": "/tmp/os2ie_sandbox/config.yaml",
+        "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml",
+        "copied": true,
+        "file_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "verify_backup_exists",
+        "inputs": ["file_path"],
+        "outputs": ["backup_present"],
+        "output_type": {"backup_present": "bool"}
+      },
+      "expected": {
+        "tool": "exists",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+        }
+      }
+    },
+    {
+      "id": "s12",
+      "_scenario": "Cat E — not_mappable: run_shell_command absent from catalog; even explicit shell commands are not_mappable at planning time",
+      "task": "Run the command 'date +%Y-%m-%d' and capture its output",
+      "context": {},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "execute_date_command",
+        "inputs": [],
+        "outputs": ["stdout", "return_code"],
+        "output_type": {"stdout": "str", "return_code": "int"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    },
+    {
+      "id": "s13",
+      "_scenario": "Cat E — not_mappable: run_shell_command absent from catalog; even explicit shell commands are not_mappable at planning time",
+      "task": "Run 'pwd' to capture the current working directory path",
+      "context": {},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "capture_cwd",
+        "inputs": [],
+        "outputs": ["stdout", "return_code"],
+        "output_type": {"stdout": "str", "return_code": "int"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    },
+    {
+      "id": "s14",
+      "_scenario": "Cat E — not_mappable: HTTP GET request, no network tool in catalog",
+      "task": "Fetch the contents of https://api.example.com/status",
+      "context": {
+        "url": "https://api.example.com/status"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "http_get_request",
+        "inputs": ["url"],
+        "outputs": ["response_body", "status_code"],
+        "output_type": {"response_body": "str", "status_code": "int"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    },
+    {
+      "id": "s15",
+      "_scenario": "Cat E — not_mappable: parse JSON file and extract a field (composite op)",
+      "task": "Parse /tmp/os2ie_sandbox/data.json and extract the value of the 'version' key",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/data.json"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "extract_json_field",
+        "inputs": ["file_path"],
+        "outputs": ["version"],
+        "output_type": {"version": "str"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    },
+    {
+      "id": "s16",
+      "_scenario": "Cat B — tricky: 'archive_project' sounds destructive but maps to copy_file (copy the single archive file)",
+      "task": "Copy the project archive /tmp/os2ie_sandbox/project.tar to /tmp/os2ie_sandbox/backups/project.tar",
+      "context": {
+        "source_path": "/tmp/os2ie_sandbox/project.tar",
+        "destination_path": "/tmp/os2ie_sandbox/backups/project.tar"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "archive_project_file",
+        "inputs": ["source_path", "destination_path"],
+        "outputs": ["archived"],
+        "output_type": {"archived": "bool"}
+      },
+      "expected": {
+        "tool": "copy_file",
+        "inputs": {
+          "source_path": "/tmp/os2ie_sandbox/project.tar",
+          "destination_path": "/tmp/os2ie_sandbox/backups/project.tar"
+        }
+      }
+    },
+    {
+      "id": "s17",
+      "_scenario": "Cat E — not_mappable: set environment variable (no env tool in catalog)",
+      "task": "Set the environment variable OS2IE_SANDBOX_PATH to /tmp/os2ie_sandbox",
+      "context": {
+        "var_name": "OS2IE_SANDBOX_PATH",
+        "var_value": "/tmp/os2ie_sandbox"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "set_environment_variable",
+        "inputs": ["var_name", "var_value"],
+        "outputs": ["env_set"],
+        "output_type": {"env_set": "bool"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    },
+    {
+      "id": "s18",
+      "_scenario": "Cat E — not_mappable: compute SHA256 hash (computation, not file I/O)",
+      "task": "Compute the SHA256 hash of /tmp/os2ie_sandbox/release.tar.gz",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/release.tar.gz"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "compute_sha256",
+        "inputs": ["file_path"],
+        "outputs": ["sha256_hash"],
+        "output_type": {"sha256_hash": "str"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    },
+    {
+      "id": "s19",
+      "_scenario": "Cat E — not_mappable: search-and-replace within file (read+transform+write atomic)",
+      "task": "In /tmp/os2ie_sandbox/main.py, replace all occurrences of 'DEBUG' with 'INFO'",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/main.py",
+        "search": "DEBUG",
+        "replace": "INFO"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "replace_in_file",
+        "inputs": ["file_path", "search", "replace"],
+        "outputs": ["replacements_made"],
+        "output_type": {"replacements_made": "int"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    },
+    {
+      "id": "s20",
+      "_scenario": "Cat E — not_mappable: base64 encode a string (pure string transform, no catalog tool)",
+      "task": "Base64-encode the string 'secret_token_xyz' and return the result",
+      "context": {
+        "input_string": "secret_token_xyz"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "base64_encode_string",
+        "inputs": ["input_string"],
+        "outputs": ["encoded"],
+        "output_type": {"encoded": "str"}
+      },
+      "expected": {
+        "tool": "not_mappable",
+        "inputs": {}
+      }
+    }
+  ]
+}
