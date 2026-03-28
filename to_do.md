@@ -194,6 +194,68 @@ Execute AND produce an executable DSTT + exploration set.
 
 ---
 
+## Next: not_mappable handler — shell viability check
+
+**Problem:** current shell fallback is a blind retry. The abstract DSTT tool
+name is opaque — we cannot predict or pattern-match shell viability from it.
+Even if intent is shell-viable, the local shell may not have the capability.
+
+**Solution: shell skill check mini-DSTT inside CreateTransitionHandler**
+
+Assume existence of `shell_skill_provider_tool` — injected, not built here.
+It returns `shell_profile`: what this shell can do, what commands are available,
+what it cannot do. The handler uses it as one stage in a skill check pipeline.
+
+### Mini-DSTT flow inside handle_not_mappable
+
+```
+not_mappable received
+  │
+  ├─ Step 1: shell_skill_provider_tool → shell_profile
+  │           (assumed injected — returns local shell capability description)
+  │
+  ├─ Step 2: skill check LLM call
+  │           input:  task + abstract_transition + shell_profile
+  │           output: capable=bool + script (if capable)
+  │           one-stop OR two-stage chain of thought — TBD
+  │
+  └─ Route (driven by DSTT output, not hardcoded logic):
+       capable=true  → run_shell_command(script) → EscapeToShell
+       capable=false → Escalation
+```
+
+### One-stop vs two-stage
+
+**One-stop:** single LLM call → `{capable: bool, script: str | null}`
+Simpler. Works for clear-cut cases.
+
+**Two-stage pipeline:**
+- Stage 1: "Given shell_profile and this transition, is the task shell-viable?"
+  → `viable: bool + reasoning`
+- Stage 2 (only if viable=true): "Generate the shell command"
+  → `script: str`
+Costlier but more reliable — separates capability reasoning from command generation.
+
+Decision: start with one-stop, promote to two-stage if accuracy is insufficient.
+
+### What is assumed (not built here)
+
+- `shell_skill_provider_tool` — injected by the caller, returns `shell_profile`
+- Prompt for the skill check LLM call — lives in `prompts/`
+- The LLM provider for the skill check (same DSPy/Ollama stack)
+
+### What gets built
+
+1. `prompts/shell_skill_check.md` — skill check prompt (one-stop first)
+2. `src/dstt_handler.py` — `CreateTransitionHandler` updated:
+   - Accept `shell_skill_provider` as injected dependency
+   - Call it to get `shell_profile`
+   - Run skill check LLM call
+   - Route on `capable` output
+3. Tests — stub `shell_skill_provider`, both routes (capable / not capable)
+
+---
+
 ## Backlog
 
 - **Path B** — tool error handler inside explore mode: reasoning repair →
