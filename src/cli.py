@@ -12,7 +12,7 @@ import argparse
 import json
 import sys
 from .catalog import build_catalog
-from .clients import Task2PlanClient, Transition2ExecClient
+from .clients import Task2PlanClient, Transition2ExecClient, Transition2ShellClient
 from .config import config
 from .kernel import execute
 
@@ -38,6 +38,7 @@ def main() -> None:
 
     t2p = Task2PlanClient(args.task2plan_url)
     t2e = Transition2ExecClient(args.transition2exec_url)
+    t2s = Transition2ShellClient(args.transition2exec_url)
 
     # Plan
     print(f"→ planning: {args.task}")
@@ -59,7 +60,7 @@ def main() -> None:
 
     # Execute — available_tools injected here (run_shell_command excluded; handler adds it on fallback)
     available_tools = [t for t in build_catalog() if t["name"] != "run_shell_command"]
-    result = execute(args.task, context, abstract_dstt, t2e, available_tools=available_tools)
+    result = execute(args.task, context, abstract_dstt, t2e, available_tools=available_tools, t2s=t2s)
 
     print(json.dumps(result.model_dump(), indent=2))
     sys.exit(0 if result.status == "completed" else 1)

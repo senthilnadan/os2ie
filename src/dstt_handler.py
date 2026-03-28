@@ -2,8 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .models import AbstractTransition, ExecutableDSTT
-from .catalog import build_catalog
+from .models import AbstractTransition, ExecutableTransition
 
 
 # ---------------------------------------------------------------------------
@@ -13,8 +12,8 @@ from .catalog import build_catalog
 
 @dataclass
 class EscapeToShell:
-    """Shell fallback succeeded — an executable transition was produced."""
-    executable_dstt: ExecutableDSTT
+    """Transition2Shell produced a viable shell script — transition assembled."""
+    executable_transition: ExecutableTransition
     transition_id: str
     abstract_tool: str
 
@@ -22,27 +21,35 @@ class EscapeToShell:
 @dataclass
 class Escalation:
     """All recovery paths exhausted — surface to caller."""
-    reason: str                          # "not_mappable_after_shell_fallback"
-    transition_id: str                   # escalation locator
-    segment_index: int                   # escalation locator
+    reason: str                                   # "not_capable_for_shell"
+    transition_id: str                            # escalation locator
+    segment_index: int                            # escalation locator
     abstract_tool: str
-    context: dict = field(default_factory=dict)   # state snapshot at failure point
+    context: dict = field(default_factory=dict)  # state snapshot at failure point
 
 
 # ---------------------------------------------------------------------------
-# Shell tool entry — appended to available_tools for the fallback retry.
-# Built once from the catalog so the description stays authoritative.
+# Output binding helper
+#
+# run_shell_command produces: stdout, stderr, return_code.
+# Map these to the abstract transition's output keys so the executor writes
+# both grounded and abstract keys into state.
+#
+# Binding strategy:
+#   - stdout      → first output key  (primary result)
+#   - return_code → second output key (if present)
+#   - stderr      → unmapped (always available in state as "stderr")
 # ---------------------------------------------------------------------------
 
-def _shell_tool_entry() -> dict[str, Any]:
-    catalog = build_catalog()
-    for tool in catalog:
-        if tool["name"] == "run_shell_command":
-            return tool
-    raise RuntimeError("run_shell_command not found in catalog")
+_SHELL_OUTPUTS = ["stdout", "return_code", "stderr"]
 
 
-_SHELL_TOOL: dict[str, Any] = _shell_tool_entry()
+def _bind_shell_outputs(abstract_outputs: list[str]) -> dict[str, str]:
+    binding: dict[str, str] = {}
+    for shell_key, abstract_key in zip(_SHELL_OUTPUTS, abstract_outputs):
+        if shell_key != abstract_key:
+            binding[shell_key] = abstract_key
+    return binding
 
 
 # ---------------------------------------------------------------------------
@@ -62,10 +69,10 @@ class DSTTHandler:
         Recovery handler for compile-time failures — when transition2exec
         returns not_mappable and no executable transition was produced.
 
-        Two recovery steps, in order:
-          1. Shell fallback  — retry compile with run_shell_command added to
-                               available_tools. Returns EscapeToShell on success.
-          2. Escalate        — return Escalation; kernel surfaces to caller.
+        Calls Transition2Shell with decomposed intent hints (never the full
+        AbstractTransition object). On not_capable → Escalation.
+        On ok → assembles ExecutableTransition with run_shell_command and
+        returns EscapeToShell.
         """
 
         @staticmethod
@@ -73,31 +80,47 @@ class DSTTHandler:
             task: str,
             state: dict[str, Any],
             abstract_transition: AbstractTransition,
-            t2e: Any,                        # Transition2ExecClient
-            available_tools: list[dict],
+            t2s: Any,                   # Transition2ShellClient
             segment_index: int = 0,
         ) -> EscapeToShell | Escalation:
 
-            # Step 1 — shell fallback
-            tools_with_shell = available_tools + [_SHELL_TOOL]
+            # Call Transition2Shell — decomposed intent hints, no full transition
             try:
-                exec_dstt, _ = t2e.compile(
-                    task, state, abstract_transition, available_tools=tools_with_shell
+                result = t2s.compile(
+                    task=task,
+                    intent=abstract_transition.tool,
+                    inputs=abstract_transition.inputs,
+                    outputs=abstract_transition.outputs,
+                    context=state,
                 )
-                if exec_dstt.status == "ok":
-                    return EscapeToShell(
-                        executable_dstt=exec_dstt,
-                        transition_id=abstract_transition.id,
-                        abstract_tool=abstract_transition.tool,
-                    )
-            except Exception:
-                pass  # shell fallback call itself failed — fall through to escalation
+            except Exception as e:
+                return Escalation(
+                    reason=f"transition2shell call failed: {e}",
+                    transition_id=abstract_transition.id,
+                    segment_index=segment_index,
+                    abstract_tool=abstract_transition.tool,
+                    context=dict(state),
+                )
 
-            # Step 2 — escalate
-            return Escalation(
-                reason="not_mappable_after_shell_fallback",
+            if result.status == "not_capable":
+                return Escalation(
+                    reason=result.reason or "not_capable_for_shell",
+                    transition_id=abstract_transition.id,
+                    segment_index=segment_index,
+                    abstract_tool=abstract_transition.tool,
+                    context=dict(state),
+                )
+
+            # Assemble ExecutableTransition — CreateTransitionHandler's responsibility
+            executable_transition = ExecutableTransition(
+                id=abstract_transition.id,
+                tool="run_shell_command",
+                inputs={"command": result.script_description},
+                outputs={},
+                output_binding=_bind_shell_outputs(abstract_transition.outputs),
+            )
+            return EscapeToShell(
+                executable_transition=executable_transition,
                 transition_id=abstract_transition.id,
-                segment_index=segment_index,
                 abstract_tool=abstract_transition.tool,
-                context=dict(state),
             )

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import Any
-from .models import AbstractDSTT, ExecutionResult, LogEntry
+from .models import AbstractDSTT, ExecutableDSTT, ExecutableSegment, ExecutionResult, LogEntry
 from .tools import TOOL_REGISTRY
-from .clients import Transition2ExecClient
-from .dstt_handler import DSTTHandler, Escalation
+from .clients import Transition2ExecClient, Transition2ShellClient
+from .dstt_handler import DSTTHandler, EscapeToShell, Escalation
 
 
 def execute(
@@ -12,10 +12,12 @@ def execute(
     abstract_dstt: AbstractDSTT,
     t2e: Transition2ExecClient,
     available_tools: list[dict[str, Any]],
+    t2s: Transition2ShellClient | None = None,
     parent_task: str | None = None,
 ) -> ExecutionResult:
     # available_tools is injected by the caller — CLI, client, or agent upstream.
     # The kernel is blind: it does not know the catalog and never builds it.
+    # t2s (Transition2ShellClient) is optional — if absent, not_mappable → fail.
     state = dict(state)
     execution_log: list[LogEntry] = []
     segments_completed = 0
@@ -36,14 +38,27 @@ def execute(
 
             # 1a. not_mappable — hand to CreateTransitionHandler
             if exec_dstt.status != "ok":
+                if t2s is None:
+                    return _fail(execution_log, state, segments_completed, milestone_reached,
+                                 abstract_transition.id, abstract_transition.tool,
+                                 {}, "not_mappable: no Transition2ShellClient provided")
+
                 result = DSTTHandler.CreateTransitionHandler.handle_not_mappable(
-                    task, state, abstract_transition, t2e, available_tools,
+                    task, state, abstract_transition, t2s,
                     segment_index=segment_index,
                 )
                 if isinstance(result, Escalation):
                     return _escalate(result, execution_log, state,
                                      segments_completed, milestone_reached)
-                exec_dstt = result.executable_dstt   # EscapeToShell — recovered
+
+                # EscapeToShell — wrap ExecutableTransition into dispatch loop
+                exec_dstt = ExecutableDSTT(
+                    status="ok",
+                    segments=[ExecutableSegment(
+                        transitions=[result.executable_transition],
+                        milestone=[result.executable_transition.id],
+                    )],
+                )
 
             # 2. For each grounded transition: PATCH → DISPATCH → MERGE
             for grounded in exec_dstt.segments[0].transitions:
