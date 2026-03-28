@@ -252,3 +252,52 @@ Output format: `{"capable": true/false, "script_description": "..."}`
 - **Path B** — tool error handler inside explore mode: reasoning repair →
   shell fallback → escalate *(explore mode, after compile_dstt is sealed)*
 - **Plan C** — multi-step / wider recovery *(explore mode, after Path B)*
+
+---
+
+## Roadmap — CreateTransitionHandler escape paths
+
+The handler is designed to grow horizontally. Each new path is a new branch
+before the terminal `Escalation`. The kernel does not change — it receives
+`EscapeToShell`, `EscapeToCode`, `UserInputRequest`, or `Escalation` and
+acts accordingly.
+
+### Path A — EscapeToShell ✓ (current)
+Shell scripter assesses whether the task can be implemented as a Unix shell
+command. Returns a `script_description`; handler assembles an `ExecutableTransition`
+with `run_shell_command`.
+
+### Path B (roadmap) — EscapeToCode
+When the task requires logic that shell cannot express but a scripting runtime
+can. Example: "create a Python program to print helloWorld", or "parse this JSON
+and compute the sum of values."
+
+A `Transition2Code` service (same contract as `Transition2Shell`) assesses whether
+the task can be implemented as a short script (Python, JS, etc.), returns the
+script text, and the handler assembles an `ExecutableTransition` with a
+`run_python` / `run_code` tool.
+
+Ordered after shell — shell is tried first (lighter execution surface); code
+runtime is tried if shell cannot handle it.
+
+### Path C (roadmap) — EscapeToUserInput
+When the system has enough context to know it *could* complete the task, but a
+required parameter is missing or ambiguous. Instead of a terminal `Escalation`,
+the handler returns a `UserInputRequest` carrying the question.
+
+The kernel suspends the DSTT at that transition boundary. The DSTT carries
+enough state to resume from any transition — suspension is a natural terminal
+state on a transition, not a kernel redesign. Execution resumes when the caller
+injects the answer back into state.
+
+Use cases: ambiguous task ("process the file" — process how?), missing required
+context value, or a decision that only the user can make.
+
+### Terminal — Escalation (structured)
+When all paths fail. The escalation reason must answer:
+1. What was attempted (paths tried)
+2. The specific capability gap
+3. What precondition would make the task doable
+
+Future enhancement: structured `capability_gap` + `tried_paths` + `resolution_hint`
+fields on `Escalation` to support downstream repair or retry services.
