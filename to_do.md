@@ -145,9 +145,38 @@ if exec_dstt.status != "ok":
 
 ---
 
+## Next: Kernel Modes — compile_dstt vs explore
+
+**Two independent modes. Designed and built separately.**
+
+### compile_dstt  ← we are here
+Abstract DSTT → Executable DSTT. Compile only — no dispatch, no state
+mutation from tools.
+
+- Calls `transition2exec` for every abstract transition
+- Accumulates grounded transitions into a fully compiled executable DSTT
+- Output handed to an executor (another kernel instance, remote executor,
+  human review, or explore mode)
+- not_mappable → Path A (CreateTransitionHandler: shell fallback → escalation)
+- No tool errors possible — nothing is dispatched
+
+### explore
+Execute AND produce an executable DSTT + exploration tree.
+
+- Compiles each transition and dispatches it immediately
+- State grows as tools execute; each compile sees live state
+- Produces: `ExecutableDSTT` + `ExplorationTree` (decision trail, branches
+  tried, outcomes at each node)
+- not_mappable → Path A applies at compile step
+- Tool error → Path B applies at dispatch step (reasoning repair →
+  shell fallback → escalate)
+- Exploration tree feeds Generation 2 adaptive execution (conditional
+  segment routing, milestone validation, partial replanning)
+
+---
+
 ## Backlog
 
-- **Path B** — tool error handler: reasoning repair → shell fallback → escalate
-  *(blocked on Path A)*
-- **Plan C** — multi-step / wider recovery
-  *(blocked on Path A + B)*
+- **Path B** — tool error handler inside explore mode: reasoning repair →
+  shell fallback → escalate *(explore mode, after compile_dstt is sealed)*
+- **Plan C** — multi-step / wider recovery *(explore mode, after Path B)*
