@@ -28,6 +28,7 @@ class StubTransition2ExecClient:
         task: str,
         state: dict[str, Any],
         abstract_transition: AbstractTransition,
+        available_tools: list[dict[str, Any]] | None = None,
     ) -> tuple[ExecutableDSTT, dict[str, Any]]:
         if not self._queue:
             raise RuntimeError("StubTransition2ExecClient: no more responses queued")
@@ -45,3 +46,8 @@ def ok(transitions: list[dict]) -> ExecutableDSTT:
             )
         ],
     )
+
+
+def not_mappable() -> ExecutableDSTT:
+    """Shorthand for a not_mappable response with no segments."""
+    return ExecutableDSTT(status="not_mappable", segments=[])
