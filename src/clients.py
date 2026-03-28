@@ -75,4 +75,5 @@ class Transition2ShellClient:
             },
         )
         resp.raise_for_status()
-        return Transition2ShellResult(**resp.json())
+        data = resp.json()
+        return Transition2ShellResult(**data.get("result", data))
