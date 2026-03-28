@@ -38,62 +38,84 @@ def _tool(
 def build_catalog() -> list[dict[str, Any]]:
     return [
         _tool("exists",
-              "Check whether a single file exists at the given path. "
-              "Does NOT execute commands, check system state, or verify anything other than file presence.",
+              "Check whether a single file or directory exists at the given path. "
+              "Returns is_present=true if the path exists, false otherwise. "
+              "Does NOT read content, count lines, validate syntax, or perform any operation on the file.",
               [("file_path", "str")],
               [("is_present", "bool")]),
 
         _tool("list_directory",
-              "List the contents of a directory. "
-              "Set recursive=true to include all nested files and subdirectories. "
-              "Set recursive=false to return immediate children only. "
-              "Returns entry names only — does NOT count, filter, or search file contents.",
+              "List the immediate children of a directory (files and subdirectories). "
+              "Set recursive=true to include all nested entries. "
+              "Returns names only — does NOT read file content, count files, search for patterns, "
+              "filter by extension, or compute any metrics.",
               [("directory_path", "str"), ("recursive", "bool")],
               [("entries", "list[str]")]),
 
         _tool("read_file",
-              "Read the full text content of a file.",
+              "Read the full raw text content of a file and return it as a string. "
+              "Use this when you need the content of a file to pass to a subsequent step. "
+              "Does NOT count lines, search for patterns, parse structure, compute checksums, "
+              "validate syntax, or process the content in any way.",
               [("file_path", "str")],
               [("text", "str")]),
 
         _tool("create_file",
-              "Create a file with the given content. Parent directories are created automatically. Overwrites if exists.",
+              "Write content to a file, creating it if it does not exist and overwriting it if it does. "
+              "Parent directories are created automatically. "
+              "Does NOT append — use append_to_file for that. "
+              "Does NOT execute the file or validate its content.",
               [("file_path", "str"), ("content", "str")],
               [("success", "bool")]),
 
         _tool("append_to_file",
-              "Append text to the end of an existing file.",
+              "Append a string to the end of an existing file without overwriting it. "
+              "Does NOT create the file if it does not exist — use create_file for that.",
               [("file_path", "str"), ("content", "str")],
               [("success", "bool")]),
 
         _tool("delete_file",
-              "Delete a single file. Returns deleted=false (not an error) if the file does not exist.",
+              "Delete a single file at the given path. "
+              "Returns deleted=false (not an error) if the file does not exist. "
+              "Does NOT delete directories — use remove_directory for that.",
               [("file_path", "str")],
               [("deleted", "bool")]),
 
         _tool("copy_file",
-              "Copy a file from source to destination, preserving metadata.",
+              "Copy a single file from source_path to destination_path, preserving content and metadata. "
+              "Does NOT copy directories. Does NOT move or rename — use move_file for that.",
               [("source_path", "str"), ("destination_path", "str")],
               [("copied", "bool")]),
 
         _tool("move_file",
-              "Move or rename a file.",
+              "Move or rename a single file from source_path to destination_path. "
+              "Does NOT copy directories. Does NOT copy — use copy_file to keep the original.",
               [("source_path", "str"), ("destination_path", "str")],
               [("moved", "bool")]),
 
         _tool("make_directory",
-              "Create a directory, including any missing parent directories.",
+              "Create a directory at the given path, including any missing parent directories. "
+              "Does NOT create files inside the directory. "
+              "Does NOT run scripts, initialise projects, copy files, or execute any commands. "
+              "Does NOT remove directories — use remove_directory for that.",
               [("directory_path", "str")],
               [("created", "bool")]),
 
         _tool("remove_directory",
-              "Remove a directory. Set recursive=true to remove non-empty directories.",
+              "Remove a directory at the given path. "
+              "Set recursive=true to remove non-empty directories including all contents. "
+              "Does NOT remove individual files — use delete_file for that.",
               [("directory_path", "str"), ("recursive", "bool")],
               [("removed", "bool")]),
 
         _tool("run_shell_command",
-              "Execute a shell command and capture its output. "
-              "Do NOT use this tool when a more specific tool (exists, read_file, list_directory, etc.) can fulfil the task.",
+              "Execute an arbitrary shell command and capture stdout, stderr, and return_code. "
+              "Use this ONLY when no other catalog tool can fulfil the task — for example: "
+              "counting lines (wc), searching content (grep), compressing files (tar/zip), "
+              "checking system state (df, ps, git), running scripts or compilers, or any "
+              "operation that requires a shell. "
+              "Do NOT use this when exists, read_file, list_directory, create_file, "
+              "copy_file, move_file, delete_file, make_directory, or remove_directory fits.",
               [("command", "str")],
               [("stdout", "str"), ("stderr", "str"), ("return_code", "int")]),
     ]
