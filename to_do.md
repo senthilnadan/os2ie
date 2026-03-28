@@ -154,10 +154,10 @@ if exec_dstt.status != "ok":
 | Mode | Output |
 |------|--------|
 | `compile_dstt` | `ExecutableDSTT` + `available_tools` |
-| `explore` | `ExecutableDSTT` + `available_tools` + `exploration_tools` |
+| `explore` | `ExecutableDSTT` + `available_tools` + `exploration_tree` |
 
 `available_tools` is the injected catalog (minus `run_shell_command`) — same
-in both modes. `exploration_tools` is the additional set produced by explore
+in both modes. `exploration_tree` is the additional set produced by explore
 mode: tools tried, alternatives considered, paths taken during execution.
 
 ### compile_dstt  ← we are here
@@ -175,8 +175,8 @@ Execute AND produce an executable DSTT + exploration set.
 
 - Compiles each transition and dispatches it immediately
 - State grows as tools execute; each compile sees live state
-- Output: `ExecutableDSTT` + `available_tools` + `exploration_tools`
-- `exploration_tools` captures the decision trail — tools tried, branches
+- Output: `ExecutableDSTT` + `available_tools` + `exploration_tree`
+- `exploration_tree` captures the decision trail — tools tried, branches
   taken, outcomes at each node
 - not_mappable → Path A applies at compile step
 - Tool error → Path B applies at dispatch step (reasoning repair →
