@@ -1,0 +1,360 @@
+{
+  "_note": "Training and regression seeds for Transition2Shell. Each seed represents one call from CreateTransitionHandler after transition2exec returned not_mappable. Pass criteria: status matches expected, script_description is present and plausible when ok, reason is present when not_capable.",
+  "seeds": [
+
+    {
+      "id": "s01",
+      "_scenario": "capable — date command, stdout output",
+      "request": {
+        "task": "Run the command 'date +%Y-%m-%d' and capture its output",
+        "intent": "execute_date_command",
+        "inputs": [],
+        "outputs": ["stdout", "return_code"],
+        "context": {}
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["date"]
+      }
+    },
+
+    {
+      "id": "s02",
+      "_scenario": "capable — capture current working directory",
+      "request": {
+        "task": "Run 'pwd' to capture the current working directory path",
+        "intent": "capture_cwd",
+        "inputs": [],
+        "outputs": ["stdout"],
+        "context": {}
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["pwd"]
+      }
+    },
+
+    {
+      "id": "s03",
+      "_scenario": "capable — count lines in a file",
+      "request": {
+        "task": "Count the number of lines in /tmp/os2ie_sandbox/report.txt",
+        "intent": "count_lines",
+        "inputs": ["file_path"],
+        "outputs": ["stdout"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/report.txt"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["wc"]
+      }
+    },
+
+    {
+      "id": "s04",
+      "_scenario": "capable — find files by extension",
+      "request": {
+        "task": "Find all .log files under /tmp/os2ie_sandbox/logs",
+        "intent": "find_log_files",
+        "inputs": ["directory_path"],
+        "outputs": ["stdout"],
+        "context": {
+          "directory_path": "/tmp/os2ie_sandbox/logs"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["find"]
+      }
+    },
+
+    {
+      "id": "s05",
+      "_scenario": "capable — grep pattern in file",
+      "request": {
+        "task": "Search for the pattern 'ERROR' in /tmp/os2ie_sandbox/app.log",
+        "intent": "search_log_for_errors",
+        "inputs": ["file_path"],
+        "outputs": ["stdout", "return_code"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/app.log"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["grep"]
+      }
+    },
+
+    {
+      "id": "s06",
+      "_scenario": "capable — set environment variable and echo it",
+      "request": {
+        "task": "Set the environment variable APP_ENV to 'production' and print it",
+        "intent": "set_and_print_env_var",
+        "inputs": ["var_name", "var_value"],
+        "outputs": ["stdout"],
+        "context": {
+          "var_name": "APP_ENV",
+          "var_value": "production"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["export", "echo"]
+      }
+    },
+
+    {
+      "id": "s07",
+      "_scenario": "capable — compress directory to tar.gz",
+      "request": {
+        "task": "Compress /tmp/os2ie_sandbox/build into /tmp/os2ie_sandbox/build.tar.gz",
+        "intent": "compress_build_output",
+        "inputs": ["source_path", "destination_path"],
+        "outputs": ["return_code"],
+        "context": {
+          "source_path": "/tmp/os2ie_sandbox/build",
+          "destination_path": "/tmp/os2ie_sandbox/build.tar.gz"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["tar"]
+      }
+    },
+
+    {
+      "id": "s08",
+      "_scenario": "capable — get file size in bytes",
+      "request": {
+        "task": "Get the size of /tmp/os2ie_sandbox/data.bin in bytes",
+        "intent": "get_file_size",
+        "inputs": ["file_path"],
+        "outputs": ["stdout"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/data.bin"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["wc", "stat", "du", "ls"]
+      }
+    },
+
+    {
+      "id": "s09",
+      "_scenario": "capable — replace string in file using sed",
+      "request": {
+        "task": "In /tmp/os2ie_sandbox/main.py, replace all occurrences of 'DEBUG' with 'INFO'",
+        "intent": "replace_in_file",
+        "inputs": ["file_path", "search", "replace"],
+        "outputs": ["return_code"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/main.py",
+          "search": "DEBUG",
+          "replace": "INFO"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["sed"]
+      }
+    },
+
+    {
+      "id": "s10",
+      "_scenario": "capable — compute SHA256 using openssl or sha256sum",
+      "request": {
+        "task": "Compute the SHA256 hash of /tmp/os2ie_sandbox/release.tar.gz",
+        "intent": "compute_sha256",
+        "inputs": ["file_path"],
+        "outputs": ["stdout"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/release.tar.gz"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["sha256sum", "openssl", "shasum"]
+      }
+    },
+
+    {
+      "id": "s11",
+      "_scenario": "capable — base64 encode a string",
+      "request": {
+        "task": "Base64-encode the string 'secret_token_xyz' and return the result",
+        "intent": "base64_encode_string",
+        "inputs": ["input_string"],
+        "outputs": ["stdout"],
+        "context": {
+          "input_string": "secret_token_xyz"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["base64", "echo"]
+      }
+    },
+
+    {
+      "id": "s12",
+      "_scenario": "not_capable — HTTP GET request, no network tool guaranteed",
+      "request": {
+        "task": "Fetch the contents of https://api.example.com/status",
+        "intent": "http_get_request",
+        "inputs": ["url"],
+        "outputs": ["response_body", "status_code"],
+        "context": {
+          "url": "https://api.example.com/status"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "s13",
+      "_scenario": "not_capable — parse JSON and extract field (pure data transform)",
+      "request": {
+        "task": "Parse /tmp/os2ie_sandbox/data.json and extract the value of the 'version' key",
+        "intent": "extract_json_field",
+        "inputs": ["file_path"],
+        "outputs": ["version"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/data.json"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "s14",
+      "_scenario": "not_capable — database query",
+      "request": {
+        "task": "Query the users table in the PostgreSQL database and return all active users",
+        "intent": "query_active_users",
+        "inputs": ["db_connection_string"],
+        "outputs": ["rows"],
+        "context": {
+          "db_connection_string": "postgres://localhost/mydb"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "s15",
+      "_scenario": "not_capable — GUI interaction",
+      "request": {
+        "task": "Click the Submit button on the browser form at http://localhost:3000",
+        "intent": "click_submit_button",
+        "inputs": ["url"],
+        "outputs": ["success"],
+        "context": {
+          "url": "http://localhost:3000"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "s16",
+      "_scenario": "not_capable — in-memory ML inference",
+      "request": {
+        "task": "Run the sentiment analysis model on the text 'This product is great'",
+        "intent": "run_sentiment_analysis",
+        "inputs": ["text"],
+        "outputs": ["sentiment", "score"],
+        "context": {
+          "text": "This product is great"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "s17",
+      "_scenario": "capable — list running processes matching a name",
+      "request": {
+        "task": "List all running processes with 'python' in the name",
+        "intent": "list_python_processes",
+        "inputs": [],
+        "outputs": ["stdout"],
+        "context": {}
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["ps", "grep", "pgrep"]
+      }
+    },
+
+    {
+      "id": "s18",
+      "_scenario": "capable — check disk usage of a directory",
+      "request": {
+        "task": "Check the total disk usage of /tmp/os2ie_sandbox in human-readable format",
+        "intent": "check_disk_usage",
+        "inputs": ["directory_path"],
+        "outputs": ["stdout"],
+        "context": {
+          "directory_path": "/tmp/os2ie_sandbox"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["du"]
+      }
+    },
+
+    {
+      "id": "s19",
+      "_scenario": "capable — create a symlink",
+      "request": {
+        "task": "Create a symbolic link at /tmp/os2ie_sandbox/current pointing to /tmp/os2ie_sandbox/v2",
+        "intent": "create_symlink",
+        "inputs": ["link_path", "target_path"],
+        "outputs": ["return_code"],
+        "context": {
+          "link_path": "/tmp/os2ie_sandbox/current",
+          "target_path": "/tmp/os2ie_sandbox/v2"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "script_description_contains": ["ln"]
+      }
+    },
+
+    {
+      "id": "s20",
+      "_scenario": "not_capable — send email (no mail tool guaranteed)",
+      "request": {
+        "task": "Send an email to admin@example.com with subject 'Build failed'",
+        "intent": "send_failure_email",
+        "inputs": ["recipient", "subject"],
+        "outputs": ["sent"],
+        "context": {
+          "recipient": "admin@example.com",
+          "subject": "Build failed"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    }
+
+  ]
+}
