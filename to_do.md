@@ -283,15 +283,43 @@ runtime is tried if shell cannot handle it.
 ### Path C (roadmap) — EscapeToUserInput
 When the system has enough context to know it *could* complete the task, but a
 required parameter is missing or ambiguous. Instead of a terminal `Escalation`,
-the handler returns a `UserInputRequest` carrying the question.
+the handler fires a callback and suspends at that transition boundary.
 
-The kernel suspends the DSTT at that transition boundary. The DSTT carries
-enough state to resume from any transition — suspension is a natural terminal
-state on a transition, not a kernel redesign. Execution resumes when the caller
-injects the answer back into state.
+**This is a callback pattern, not a blocking pause:**
+- Handler fires callback (webhook, channel, UI event — caller's choice)
+- Persists session#, task#, transition position, state snapshot
+- Returns immediately — kernel is not blocked
+- Callback service receives user answer, calls `resume(session#, task#, answer)`
+- Answer is injected into state; compile resumes from that transition
 
-Use cases: ambiguous task ("process the file" — process how?), missing required
-context value, or a decision that only the user can make.
+**Hard dependency — StreamedTaskExecutor:**
+EscapeToUserInput can occur at *compile time* — when the handler cannot
+determine how to compile a transition without user input. The current batch
+model (compile all → execute all) has no pause point during compilation.
+
+`EscapeToUserInput` requires a `StreamedTaskExecutor`:
+
+```
+StreamedTaskExecutor
+  compile transition N → execute transition N → state grows
+  compile transition N+1 → execute transition N+1
+  EscapeToUserInput at compile N+2 → suspend
+    → fire callback
+    → persist: session#, task#, transition N+2 position, state
+    → resume(session#, task#, answer) re-enters at transition N+2
+    → answer injected into state → compile continues
+```
+
+`StreamedTaskExecutor` is `explore` mode with:
+- Per-transition compile + dispatch (already there in explore)
+- Persistence store at every transition boundary (new)
+- Callback-driven `resume()` entry point (new)
+- session# + task# as first-class identifiers (new)
+
+Persistence is required at *compile time* — not just execution time.
+The state snapshot at a suspended compile step must include the partial
+abstract DSTT, position within it, and accumulated state from all
+transitions executed so far.
 
 ### Terminal — Escalation (structured)
 When all paths fail. The escalation reason must answer:
