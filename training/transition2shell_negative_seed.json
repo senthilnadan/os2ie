@@ -1,0 +1,282 @@
+{
+  "_note": "Negative and boundary seeds for Transition2Shell. These test where the model's judgement breaks down — false positives (says ok when shell cannot do it), false negatives (says not_capable when shell can), ambiguous intent, and edge case inputs.",
+  "seeds": [
+
+    {
+      "id": "n01",
+      "_category": "boundary — sounds shell-capable but isn't",
+      "_scenario": "download_file with HTTP URL — curl not guaranteed",
+      "request": {
+        "task": "Download the file at https://releases.example.com/v2/app.tar.gz to /tmp/os2ie_sandbox/app.tar.gz",
+        "intent": "download_file",
+        "inputs": ["url", "destination_path"],
+        "outputs": ["return_code"],
+        "context": {
+          "url": "https://releases.example.com/v2/app.tar.gz",
+          "destination_path": "/tmp/os2ie_sandbox/app.tar.gz"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n02",
+      "_category": "boundary — sounds shell-capable but isn't",
+      "_scenario": "read_config_value — file is JSON, field extraction not reliably shell",
+      "request": {
+        "task": "Read the value of the 'database.host' key from /tmp/os2ie_sandbox/config.json",
+        "intent": "read_config_value",
+        "inputs": ["file_path", "key"],
+        "outputs": ["value"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/config.json",
+          "key": "database.host"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n03",
+      "_category": "boundary — sounds shell-capable but isn't",
+      "_scenario": "get_latest_record — DB connection string present",
+      "request": {
+        "task": "Get the most recent entry from the events table",
+        "intent": "get_latest_record",
+        "inputs": ["db_connection_string", "table_name"],
+        "outputs": ["record"],
+        "context": {
+          "db_connection_string": "postgres://localhost/appdb",
+          "table_name": "events"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n04",
+      "_category": "boundary — sounds shell-capable but isn't",
+      "_scenario": "resize_image — imagemagick not guaranteed",
+      "request": {
+        "task": "Resize /tmp/os2ie_sandbox/photo.jpg to 800x600 pixels",
+        "intent": "resize_image",
+        "inputs": ["file_path", "width", "height"],
+        "outputs": ["return_code"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/photo.jpg",
+          "width": 800,
+          "height": 600
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n05",
+      "_category": "boundary — sounds shell-capable but isn't",
+      "_scenario": "send_slack_message — API call, not shell",
+      "request": {
+        "task": "Send a Slack message 'Build complete' to the #deployments channel",
+        "intent": "notify_slack",
+        "inputs": ["message", "channel"],
+        "outputs": ["sent"],
+        "context": {
+          "message": "Build complete",
+          "channel": "#deployments"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n06",
+      "_category": "ambiguous intent — too vague",
+      "_scenario": "process_data — no indication of what processing means",
+      "request": {
+        "task": "Process the data file at /tmp/os2ie_sandbox/input.dat",
+        "intent": "process_data",
+        "inputs": ["file_path"],
+        "outputs": ["result"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/input.dat"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n07",
+      "_category": "ambiguous intent — too vague",
+      "_scenario": "transform_file — no indication of what transform",
+      "request": {
+        "task": "Transform /tmp/os2ie_sandbox/data.csv",
+        "intent": "transform_file",
+        "inputs": ["file_path"],
+        "outputs": ["output_path"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/data.csv"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n08",
+      "_category": "ambiguous intent — too vague",
+      "_scenario": "validate_input — no validation criteria specified",
+      "request": {
+        "task": "Validate the input value before processing",
+        "intent": "validate_input",
+        "inputs": ["input_value"],
+        "outputs": ["is_valid"],
+        "context": {
+          "input_value": "some_value"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n09",
+      "_category": "ambiguous intent — too vague",
+      "_scenario": "analyze_logs — could be grep or could be complex parsing",
+      "request": {
+        "task": "Analyze the log file and report any anomalies",
+        "intent": "analyze_logs",
+        "inputs": ["file_path"],
+        "outputs": ["anomalies"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/app.log"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n10",
+      "_category": "edge case input — empty intent",
+      "_scenario": "no intent signal — model has nothing to reason from",
+      "request": {
+        "task": "Do the thing with the file",
+        "intent": "",
+        "inputs": ["file_path"],
+        "outputs": ["result"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/file.txt"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n11",
+      "_category": "edge case input — empty task and context",
+      "_scenario": "nothing to reason from",
+      "request": {
+        "task": "",
+        "intent": "do_something",
+        "inputs": [],
+        "outputs": ["result"],
+        "context": {}
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n12",
+      "_category": "edge case input — output type is dict (not shell-producible)",
+      "_scenario": "output is a structured object, shell cannot produce it",
+      "request": {
+        "task": "Parse the configuration and return it as a structured object",
+        "intent": "parse_config",
+        "inputs": ["file_path"],
+        "outputs": ["config_object"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/config.yaml"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n13",
+      "_category": "boundary — elevated permissions required",
+      "_scenario": "change file owner to root — requires sudo",
+      "request": {
+        "task": "Change the owner of /tmp/os2ie_sandbox/deploy.sh to root",
+        "intent": "change_file_owner",
+        "inputs": ["file_path", "owner"],
+        "outputs": ["return_code"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/deploy.sh",
+          "owner": "root"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n14",
+      "_category": "boundary — sounds like file op but requires network",
+      "_scenario": "sync_to_s3 — cloud storage, not local shell",
+      "request": {
+        "task": "Sync /tmp/os2ie_sandbox/output to s3://mybucket/output",
+        "intent": "sync_to_s3",
+        "inputs": ["source_path", "bucket_path"],
+        "outputs": ["return_code"],
+        "context": {
+          "source_path": "/tmp/os2ie_sandbox/output",
+          "bucket_path": "s3://mybucket/output"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    },
+
+    {
+      "id": "n15",
+      "_category": "boundary — atomic read-modify-write",
+      "_scenario": "increment_counter — race condition if done with shell",
+      "request": {
+        "task": "Atomically increment the counter in /tmp/os2ie_sandbox/count.txt by 1",
+        "intent": "increment_counter",
+        "inputs": ["file_path"],
+        "outputs": ["new_value"],
+        "context": {
+          "file_path": "/tmp/os2ie_sandbox/count.txt"
+        }
+      },
+      "expected": {
+        "status": "not_capable"
+      }
+    }
+
+  ]
+}
