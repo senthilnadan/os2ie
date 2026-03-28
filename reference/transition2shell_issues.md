@@ -257,6 +257,30 @@ Run against live service to reproduce all issues above.
 
 ---
 
+## Roadmap — Two-pass chain of thought
+
+**Target:** Transition2Shell v2
+
+All five issues documented here are structural limitations of the current single-pass
+design. The model is asked to simultaneously assess capability, resolve task-vs-intent
+conflicts, check constraints, and inject context values — all in one generation step.
+Single-pass reasoning cannot reliably do all of these in conflicting situations.
+
+**Planned fix:** A two-pass chain of thought within the same generation:
+
+- **Pass 1 (reasoning):** Explicit scratchpad — capability check, constraint analysis,
+  task-vs-intent priority resolution, context value extraction.
+- **Pass 2 (output):** Structured JSON response derived from Pass 1 conclusions, not
+  from free-association.
+
+The output schema would add a `reasoning` field (stripped by the caller before returning
+to the client): `{reasoning: "...", status: ..., script_description: ...}`.
+
+**Scope:** Do not attempt to address Issues 4 or 5 in v1. The prompt cannot compensate
+for the architectural gap. Schedule two-pass CoT for the v2 prompt and training cycle.
+
+---
+
 ## Pass criteria reminder
 
 | Case | Expected |
