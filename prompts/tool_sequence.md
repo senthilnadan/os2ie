@@ -13,11 +13,12 @@ You are given an abstract transition (an abstract tool name + input/output key n
 
 ## Your task
 
-1. **Select the grounded tool** whose purpose best matches what the abstract tool name describes. Use the task description and abstract output names as signal.
+1. **Select the grounded tool** whose purpose exactly matches what the abstract tool name describes. The tool must be capable of fulfilling the full intent of the task — not just partially related to it.
 
 2. **Resolve each required input** for the grounded tool:
    - Look for a matching key in `context` (exact name or obvious alias).
-   - If the value is stated explicitly in the task description, use it.
+   - Copy the value exactly as it appears in context — do not paraphrase or summarise.
+   - If the value is stated explicitly in the task description, use it verbatim.
    - If a required input has no value in context and the task gives no value, use an empty string `""`.
 
 3. **Output a plain-text plan** using this exact format:
@@ -33,16 +34,50 @@ INPUTS: <key>=<value>, <key>=<value>, ...
 - Emit exactly one TOOL line and one INPUTS line.
 - Do not explain your reasoning.
 - If a required input has no value in context, derive it from the task description. If the task gives no value either, use an empty string `""`.
+- **If no tool in `available_tools` can directly and fully fulfil the abstract transition, output:**
+  ```
+  TOOL: not_mappable
+  INPUTS:
+  ```
+  Do NOT pick the closest or most similar tool as a substitute. A wrong tool is worse than no tool.
 
-## Example
+## Examples
+
+task: List files in /tmp/os2ie_sandbox
+abstract_tool: list_project_files
+abstract_inputs: [directory_path]
+abstract_outputs: [entries]
+context: {directory_path: /tmp/os2ie_sandbox}
+
+→
+
+TOOL: list_directory
+INPUTS: directory_path=/tmp/os2ie_sandbox
+
+---
 
 task: Check the Python version installed on this system
 abstract_tool: check_python_version
 abstract_inputs: []
 abstract_outputs: [python_version]
 context: {}
+available_tools: [list_directory, exists, read_file]
 
 →
 
-TOOL: run_shell_command
-INPUTS: command=python3 --version
+TOOL: not_mappable
+INPUTS:
+
+---
+
+task: Count all Python files in /tmp/os2ie_sandbox
+abstract_tool: count_python_files
+abstract_inputs: [working_directory]
+abstract_outputs: [python_file_count]
+context: {working_directory: /tmp/os2ie_sandbox}
+available_tools: [list_directory, exists, read_file]
+
+→
+
+TOOL: not_mappable
+INPUTS:

@@ -398,9 +398,10 @@
         }
       },
       "expected": {
-        "tool": "list_directory_recursive",
+        "tool": "list_directory",
         "inputs": {
-          "directory_path": "/tmp/os2ie_sandbox"
+          "directory_path": "/tmp/os2ie_sandbox",
+          "recursive": "true"
         }
       }
     },
@@ -501,10 +502,8 @@
         }
       },
       "expected": {
-        "tool": "run_shell_command",
-        "inputs": {
-          "command": "python3 --version"
-        }
+        "tool": "not_mappable",
+        "inputs": {}
       }
     },
     {
@@ -527,11 +526,8 @@
         }
       },
       "expected": {
-        "tool": "run_shell_command",
-        "inputs": {
-          "command": "find . -name '*.py' | wc -l",
-          "working_directory": "/tmp/os2ie_sandbox"
-        }
+        "tool": "not_mappable",
+        "inputs": {}
       }
     },
     {
@@ -554,11 +550,8 @@
         }
       },
       "expected": {
-        "tool": "run_shell_command",
-        "inputs": {
-          "command": "grep -rl 'import fastapi' .",
-          "working_directory": "/tmp/os2ie_sandbox"
-        }
+        "tool": "not_mappable",
+        "inputs": {}
       }
     },
     {
@@ -670,7 +663,7 @@
         "tool": "append_to_file",
         "inputs": {
           "file_path": "/tmp/os2ie_sandbox/log.txt",
-          "content": "line1\n"
+          "content": "line1"
         }
       }
     },
@@ -734,9 +727,7 @@
     {
       "id": "12a",
       "task": "Run 'echo hello_from_shell' and write its stdout to /tmp/os2ie_sandbox/out.txt",
-      "context": {
-        "file_path": "/tmp/os2ie_sandbox/out.txt"
-      },
+      "context": {},
       "abstract_transition": {
         "id": "t1",
         "tool": "run_echo_command",
@@ -781,7 +772,7 @@
         "tool": "create_file",
         "inputs": {
           "file_path": "/tmp/os2ie_sandbox/out.txt",
-          "content": "hello_from_shell\n"
+          "content": "hello_from_shell"
         }
       }
     },

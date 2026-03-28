@@ -1,0 +1,1440 @@
+{
+  "_note": "Issues to raise with transition2exec team.",
+  "_issues": [
+    {
+      "issue": 1,
+      "title": "Stage 1 emits tool output key names as input values — spurious keys injected into INPUTS",
+      "seed": "15",
+      "observed": "actual inputs contain 'required_outputs(return_code): true' — output signature key bleeding into Stage 1 INPUTS resolution",
+      "root_cause": "Stage 1 prompt has no rule preventing output key names from being used as input values. Model confuses tool output signature with input values when context is sparse.",
+      "fix": "Add rule to Stage 1 prompt: 'Do not include tool output key names in INPUTS. INPUTS must only contain values for the tool input signature keys.'"
+    },
+    {
+      "issue": 2,
+      "title": "Stage 1 returns status=ok with wrong tool instead of not_mappable when no tool matches"
+    }
+  ],
+  "_root_cause": "_select_best_match falls back to templates[0] when all scores are 0 (no name token overlap). The selected tool has zero output key overlap with the abstract transition's required outputs. No programmatic guard exists to catch this.",
+  "_fix": "Add output key overlap guard in _extract_resolved_tools after _select_best_match. If selected tool's output keys have zero intersection with abstract_transition.outputs → return '(none matched)' → stage 2 produces not_mappable.",
+  "_safe_to_apply": "All currently-passing seeds produce tools whose output keys match their abstract outputs — the guard will not affect them. Only seeds 06, 07, 08, 15 change: from wrong tool to not_mappable.",
+  "_breakdown": [
+    { "id": "06", "abstract_tool": "check_python_version",   "abstract_outputs": ["python_version"],    "actual_tool": "exists",                   "tool_outputs": ["is_present"], "problem": "zero output overlap" },
+    { "id": "07", "abstract_tool": "count_python_files",     "abstract_outputs": ["python_file_count"], "actual_tool": "list_directory_recursive", "tool_outputs": ["entries"],    "problem": "zero output overlap" },
+    { "id": "08", "abstract_tool": "find_files_with_import", "abstract_outputs": ["matching_files"],    "actual_tool": "list_directory_recursive", "tool_outputs": ["entries"],    "problem": "zero output overlap" },
+    { "id": "15", "abstract_tool": "run_failing_command",    "abstract_outputs": ["return_code"],       "actual_tool": "exists",                   "tool_outputs": ["is_present"], "problem": "zero output overlap" }
+  ],
+  "issues": [
+    {
+      "id": "06",
+      "_issue": "transition2exec must return not_mappable when no tool can fulfil the abstract transition",
+      "_expected_status": "not_mappable",
+      "_actual_status": "ok",
+      "_actual_tool": "exists",
+      "_meta_status": "ok",
+      "task": "Check the Python version installed on this system",
+      "context": {},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "check_python_version",
+        "inputs": [],
+        "outputs": [
+          "python_version"
+        ],
+        "output_type": {
+          "python_version": "str"
+        }
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a file exists at the given path.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (non-recursive).",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "list_directory_recursive",
+          "description": "Recursively list all files and directories under a given directory.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full text content of a file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Create a file with the given content. Parent directories are created automatically. Overwrites if exists.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append text to the end of an existing file.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file. Returns deleted=false (not an error) if the file does not exist.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a file from source to destination, preserving metadata.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a file.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory, including any missing parent directories.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory. Set recursive=true to remove non-empty directories.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        }
+      ],
+      "expected_response": {
+        "executable_dstt": {
+          "status": "not_mappable",
+          "segments": []
+        }
+      },
+      "actual_response": {
+        "executable_dstt": {
+          "status": "ok",
+          "segments": [
+            {
+              "transitions": [
+                {
+                  "id": "t1",
+                  "tool": "exists",
+                  "inputs": {
+                    "file_path": "/usr/bin/python --version"
+                  },
+                  "outputs": {
+                    "is_present": null
+                  }
+                }
+              ],
+              "milestone": [
+                "is_present"
+              ]
+            }
+          ],
+          "context": {
+            "tool_plan": "TOOL: exists\nINPUTS: file_path=/usr/bin/python --version"
+          }
+        },
+        "meta": {
+          "status": "ok",
+          "model": "qwen2.5:7b",
+          "version": "0.1.0",
+          "detail": null
+        }
+      }
+    },
+    {
+      "id": "07",
+      "_issue": "transition2exec must return not_mappable when no tool can fulfil the abstract transition",
+      "_expected_status": "not_mappable",
+      "_actual_status": "ok",
+      "_actual_tool": "list_directory_recursive",
+      "_meta_status": "ok",
+      "task": "Count all Python files in /tmp/os2ie_sandbox",
+      "context": {
+        "working_directory": "/tmp/os2ie_sandbox"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "count_python_files",
+        "inputs": [
+          "working_directory"
+        ],
+        "outputs": [
+          "python_file_count"
+        ],
+        "output_type": {
+          "python_file_count": "int"
+        }
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a file exists at the given path.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (non-recursive).",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "list_directory_recursive",
+          "description": "Recursively list all files and directories under a given directory.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full text content of a file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Create a file with the given content. Parent directories are created automatically. Overwrites if exists.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append text to the end of an existing file.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file. Returns deleted=false (not an error) if the file does not exist.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a file from source to destination, preserving metadata.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a file.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory, including any missing parent directories.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory. Set recursive=true to remove non-empty directories.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        }
+      ],
+      "expected_response": {
+        "executable_dstt": {
+          "status": "not_mappable",
+          "segments": []
+        }
+      },
+      "actual_response": {
+        "executable_dstt": {
+          "status": "ok",
+          "segments": [
+            {
+              "transitions": [
+                {
+                  "id": "t1",
+                  "tool": "list_directory_recursive",
+                  "inputs": {
+                    "directory_path": "/tmp/os2ie_sandbox"
+                  },
+                  "outputs": {
+                    "entries": null
+                  }
+                }
+              ],
+              "milestone": [
+                "entries"
+              ]
+            }
+          ],
+          "context": {
+            "tool_plan": "TOOL: list_directory_recursive\nINPUTS: directory_path=/tmp/os2ie_sandbox"
+          }
+        },
+        "meta": {
+          "status": "ok",
+          "model": "qwen2.5:7b",
+          "version": "0.1.0",
+          "detail": null
+        }
+      }
+    },
+    {
+      "id": "08",
+      "_issue": "transition2exec must return not_mappable when no tool can fulfil the abstract transition",
+      "_expected_status": "not_mappable",
+      "_actual_status": "ok",
+      "_actual_tool": "list_directory_recursive",
+      "_meta_status": "ok",
+      "task": "Find all files containing 'import fastapi' in /tmp/os2ie_sandbox",
+      "context": {
+        "working_directory": "/tmp/os2ie_sandbox"
+      },
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "find_files_with_import",
+        "inputs": [
+          "working_directory"
+        ],
+        "outputs": [
+          "matching_files"
+        ],
+        "output_type": {
+          "matching_files": "list[str]"
+        }
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a file exists at the given path.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (non-recursive).",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "list_directory_recursive",
+          "description": "Recursively list all files and directories under a given directory.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full text content of a file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Create a file with the given content. Parent directories are created automatically. Overwrites if exists.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append text to the end of an existing file.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file. Returns deleted=false (not an error) if the file does not exist.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a file from source to destination, preserving metadata.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a file.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory, including any missing parent directories.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory. Set recursive=true to remove non-empty directories.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        }
+      ],
+      "expected_response": {
+        "executable_dstt": {
+          "status": "not_mappable",
+          "segments": []
+        }
+      },
+      "actual_response": {
+        "executable_dstt": {
+          "status": "ok",
+          "segments": [
+            {
+              "transitions": [
+                {
+                  "id": "t1",
+                  "tool": "list_directory_recursive",
+                  "inputs": {
+                    "directory_path": "/tmp/os2ie_sandbox"
+                  },
+                  "outputs": {
+                    "entries": null
+                  }
+                }
+              ],
+              "milestone": [
+                "entries"
+              ]
+            }
+          ],
+          "context": {
+            "tool_plan": "TOOL: list_directory_recursive\nINPUTS: directory_path=/tmp/os2ie_sandbox"
+          }
+        },
+        "meta": {
+          "status": "ok",
+          "model": "qwen2.5:7b",
+          "version": "0.1.0",
+          "detail": null
+        }
+      }
+    },
+    {
+      "id": "15",
+      "_issue": "transition2exec must return not_mappable when no tool can fulfil the abstract transition",
+      "_expected_status": "not_mappable",
+      "_actual_status": "ok",
+      "_actual_tool": "exists",
+      "_meta_status": "low_confidence",
+      "task": "Run the shell command 'exit 1'",
+      "context": {},
+      "abstract_transition": {
+        "id": "t1",
+        "tool": "run_failing_command",
+        "inputs": [],
+        "outputs": [
+          "return_code"
+        ],
+        "output_type": {
+          "return_code": "int"
+        }
+      },
+      "available_tools": [
+        {
+          "name": "exists",
+          "description": "Check whether a file exists at the given path.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "is_present"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "is_present",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "list_directory",
+          "description": "List the immediate children of a directory (non-recursive).",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "list_directory_recursive",
+          "description": "Recursively list all files and directories under a given directory.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "entries"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "entries",
+              "type": "list[str]"
+            }
+          ]
+        },
+        {
+          "name": "read_file",
+          "description": "Read the full text content of a file.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "text"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "text",
+              "type": "str"
+            }
+          ]
+        },
+        {
+          "name": "create_file",
+          "description": "Create a file with the given content. Parent directories are created automatically. Overwrites if exists.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "append_to_file",
+          "description": "Append text to the end of an existing file.",
+          "signature": {
+            "inputs": [
+              "file_path",
+              "content"
+            ],
+            "outputs": [
+              "success"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            },
+            {
+              "name": "content",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "success",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "delete_file",
+          "description": "Delete a single file. Returns deleted=false (not an error) if the file does not exist.",
+          "signature": {
+            "inputs": [
+              "file_path"
+            ],
+            "outputs": [
+              "deleted"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "file_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "deleted",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "copy_file",
+          "description": "Copy a file from source to destination, preserving metadata.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "copied"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "copied",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "move_file",
+          "description": "Move or rename a file.",
+          "signature": {
+            "inputs": [
+              "source_path",
+              "destination_path"
+            ],
+            "outputs": [
+              "moved"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "source_path",
+              "type": "str"
+            },
+            {
+              "name": "destination_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "moved",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "make_directory",
+          "description": "Create a directory, including any missing parent directories.",
+          "signature": {
+            "inputs": [
+              "directory_path"
+            ],
+            "outputs": [
+              "created"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "created",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "remove_directory",
+          "description": "Remove a directory. Set recursive=true to remove non-empty directories.",
+          "signature": {
+            "inputs": [
+              "directory_path",
+              "recursive"
+            ],
+            "outputs": [
+              "removed"
+            ]
+          },
+          "inputs": [
+            {
+              "name": "directory_path",
+              "type": "str"
+            },
+            {
+              "name": "recursive",
+              "type": "bool"
+            }
+          ],
+          "outputs": [
+            {
+              "name": "removed",
+              "type": "bool"
+            }
+          ]
+        }
+      ],
+      "expected_response": {
+        "executable_dstt": {
+          "status": "not_mappable",
+          "segments": []
+        }
+      },
+      "actual_response": {
+        "executable_dstt": {
+          "status": "ok",
+          "segments": [
+            {
+              "transitions": [
+                {
+                  "id": "t1",
+                  "tool": "exists",
+                  "inputs": {
+                    "file_path": "exit 1"
+                  },
+                  "outputs": {
+                    "is_present": null
+                  }
+                }
+              ],
+              "milestone": [
+                "is_present"
+              ]
+            }
+          ],
+          "context": {
+            "tool_plan": "TOOL: exists\nINPUTS: file_path=exit 1"
+          }
+        },
+        "meta": {
+          "status": "low_confidence",
+          "model": "qwen2.5:7b",
+          "version": "0.1.0",
+          "detail": "The request can be compiled, but key operational details were not provided."
+        }
+      }
+    }
+  ]
+}
