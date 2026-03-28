@@ -194,65 +194,56 @@ Execute AND produce an executable DSTT + exploration set.
 
 ---
 
-## Next: not_mappable handler — shell viability check
+## Next: not_mappable handler — shell scripter skill check
 
 **Problem:** current shell fallback is a blind retry. The abstract DSTT tool
-name is opaque — we cannot predict or pattern-match shell viability from it.
-Even if intent is shell-viable, the local shell may not have the capability.
+name is opaque — we cannot predict shell viability from it.
 
-**Solution: shell skill check mini-DSTT inside CreateTransitionHandler**
+**Solution: shell scripter prompt — separate LLM call, separate role**
 
-Assume existence of `shell_skill_provider_tool` — injected, not built here.
-It returns `shell_profile`: what this shell can do, what commands are available,
-what it cannot do. The handler uses it as one stage in a skill check pipeline.
+Not the transition2exec prompt. A distinct prompt where the LLM acts as a
+**shell scripter**, not a tool mapper. Generic shell profile is static —
+baked into the prompt, no runtime dependency.
 
-### Mini-DSTT flow inside handle_not_mappable
+### Flow
 
 ```
 not_mappable received
   │
-  ├─ Step 1: shell_skill_provider_tool → shell_profile
-  │           (assumed injected — returns local shell capability description)
+  ├─ Shell scripter LLM call  (prompts/shell_skill_check.md)
+  │    role:   shell scripter
+  │    given:  abstract transition (task intent, inputs, outputs)
+  │            + generic shell capability profile (static, in prompt)
+  │    asked:  can this task be implemented as a shell script?
+  │            if yes — describe the script
+  │    output: capable=bool + script_description=str
   │
-  ├─ Step 2: skill check LLM call
-  │           input:  task + abstract_transition + shell_profile
-  │           output: capable=bool + script (if capable)
-  │           one-stop OR two-stage chain of thought — TBD
+  ├─ capable=true
+  │    → shell fallback compile with script_description injected as context
+  │    → EscapeToShell
   │
-  └─ Route (driven by DSTT output, not hardcoded logic):
-       capable=true  → run_shell_command(script) → EscapeToShell
-       capable=false → Escalation
+  └─ capable=false
+       → Escalation immediately — no retry wasted
 ```
 
-### One-stop vs two-stage
+### Prompt design (prompts/shell_skill_check.md)
 
-**One-stop:** single LLM call → `{capable: bool, script: str | null}`
-Simpler. Works for clear-cut cases.
-
-**Two-stage pipeline:**
-- Stage 1: "Given shell_profile and this transition, is the task shell-viable?"
-  → `viable: bool + reasoning`
-- Stage 2 (only if viable=true): "Generate the shell command"
-  → `script: str`
-Costlier but more reliable — separates capability reasoning from command generation.
-
-Decision: start with one-stop, promote to two-stage if accuracy is insufficient.
-
-### What is assumed (not built here)
-
-- `shell_skill_provider_tool` — injected by the caller, returns `shell_profile`
-- Prompt for the skill check LLM call — lives in `prompts/`
-- The LLM provider for the skill check (same DSPy/Ollama stack)
+Role: shell scripter
+Static shell profile section: what a Unix shell can do (file ops, process
+execution, stdio, pipes, env vars) and what it cannot (HTTP without curl,
+GUI, pure computation without system commands)
+Task section: filled at runtime from abstract_transition
+Output format: `{"capable": true/false, "script_description": "..."}`
 
 ### What gets built
 
-1. `prompts/shell_skill_check.md` — skill check prompt (one-stop first)
-2. `src/dstt_handler.py` — `CreateTransitionHandler` updated:
-   - Accept `shell_skill_provider` as injected dependency
-   - Call it to get `shell_profile`
-   - Run skill check LLM call
-   - Route on `capable` output
-3. Tests — stub `shell_skill_provider`, both routes (capable / not capable)
+1. `prompts/shell_skill_check.md` — shell scripter prompt with static profile
+2. `src/shell_skill_check.py` — LLM call wrapper, returns `ShellSkillResult`
+3. `src/dstt_handler.py` — `CreateTransitionHandler` updated:
+   - Call shell scripter before retry
+   - `capable=false` → escalate immediately
+   - `capable=true` → retry compile with script_description in context
+4. Tests — stub skill check, both routes
 
 ---
 
