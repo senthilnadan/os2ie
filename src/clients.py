@@ -2,10 +2,6 @@ from __future__ import annotations
 from typing import Any
 import requests
 from .models import AbstractDSTT, AbstractTransition, ExecutableDSTT
-from .catalog import build_catalog
-
-# Built once at import time — reflects the shells and tools available on this machine.
-_CATALOG: list[dict[str, Any]] = build_catalog()
 
 
 class Task2PlanClient:
@@ -28,14 +24,22 @@ class Transition2ExecClient:
         task: str,
         state: dict[str, Any],
         abstract_transition: AbstractTransition,
+        available_tools: list[dict[str, Any]] | None = None,
     ) -> tuple[ExecutableDSTT, dict[str, Any]]:
+        """
+        Compile an abstract transition into an executable transition.
+
+        available_tools is injected by the caller (provider/agent upstream).
+        If not provided, an empty list is sent — the server must have its own
+        fallback or the call will fail.
+        """
         resp = requests.post(
             self._url,
             json={
                 "task": task,
                 "context": state,
                 "abstract_transition": abstract_transition.model_dump(),
-                "available_tools": _CATALOG,
+                "available_tools": available_tools or [],
             },
         )
         resp.raise_for_status()

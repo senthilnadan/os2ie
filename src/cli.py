@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from .catalog import build_catalog
 from .clients import Task2PlanClient, Transition2ExecClient
 from .config import config
 from .kernel import execute
@@ -56,8 +57,9 @@ def main() -> None:
     total_transitions = sum(len(s.transitions) for s in abstract_dstt.segments)
     print(f"→ plan ready: {len(abstract_dstt.segments)} segment(s), {total_transitions} transition(s)")
 
-    # Execute
-    result = execute(args.task, context, abstract_dstt, t2e)
+    # Execute — available_tools injected here (run_shell_command excluded; handler adds it on fallback)
+    available_tools = [t for t in build_catalog() if t["name"] != "run_shell_command"]
+    result = execute(args.task, context, abstract_dstt, t2e, available_tools=available_tools)
 
     print(json.dumps(result.model_dump(), indent=2))
     sys.exit(0 if result.status == "completed" else 1)

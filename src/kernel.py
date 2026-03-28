@@ -3,6 +3,7 @@ from typing import Any
 from .models import AbstractDSTT, ExecutionResult, LogEntry
 from .tools import TOOL_REGISTRY
 from .clients import Transition2ExecClient
+from .dstt_handler import DSTTHandler, Escalation
 
 
 def execute(
@@ -10,28 +11,39 @@ def execute(
     state: dict[str, Any],
     abstract_dstt: AbstractDSTT,
     t2e: Transition2ExecClient,
+    available_tools: list[dict[str, Any]],
     parent_task: str | None = None,
 ) -> ExecutionResult:
+    # available_tools is injected by the caller — CLI, client, or agent upstream.
+    # The kernel is blind: it does not know the catalog and never builds it.
     state = dict(state)
     execution_log: list[LogEntry] = []
     segments_completed = 0
     milestone_reached: list[str] = []
 
-    for segment in abstract_dstt.segments:
+    for segment_index, segment in enumerate(abstract_dstt.segments):
         for abstract_transition in segment.transitions:
 
             # 1. COMPILE
             try:
-                exec_dstt, meta = t2e.compile(task, state, abstract_transition)
+                exec_dstt, meta = t2e.compile(
+                    task, state, abstract_transition, available_tools=available_tools
+                )
             except Exception as e:
                 return _fail(execution_log, state, segments_completed, milestone_reached,
                              abstract_transition.id, abstract_transition.tool,
                              {}, f"compile error: {e}")
 
+            # 1a. not_mappable — hand to CreateTransitionHandler
             if exec_dstt.status != "ok":
-                return _fail(execution_log, state, segments_completed, milestone_reached,
-                             abstract_transition.id, abstract_transition.tool,
-                             {}, f"transition2exec status: {exec_dstt.status}")
+                result = DSTTHandler.CreateTransitionHandler.handle_not_mappable(
+                    task, state, abstract_transition, t2e, available_tools,
+                    segment_index=segment_index,
+                )
+                if isinstance(result, Escalation):
+                    return _escalate(result, execution_log, state,
+                                     segments_completed, milestone_reached)
+                exec_dstt = result.executable_dstt   # EscapeToShell — recovered
 
             # 2. For each grounded transition: PATCH → DISPATCH → MERGE
             for grounded in exec_dstt.segments[0].transitions:
@@ -99,6 +111,30 @@ def _fail(
     ))
     return ExecutionResult(
         status="failed",
+        state=state,
+        execution_log=log,
+        segments_completed=segments_completed,
+        milestone_reached=milestone_reached,
+    )
+
+
+def _escalate(
+    escalation: Escalation,
+    log: list[LogEntry],
+    state: dict[str, Any],
+    segments_completed: int,
+    milestone_reached: list[str],
+) -> ExecutionResult:
+    log.append(LogEntry(
+        transition_id=escalation.transition_id,
+        tool=escalation.abstract_tool,
+        inputs={},
+        outputs={},
+        status="escalated",
+        error=escalation.reason,
+    ))
+    return ExecutionResult(
+        status="escalated",
         state=state,
         execution_log=log,
         segments_completed=segments_completed,
