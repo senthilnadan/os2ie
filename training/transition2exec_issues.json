@@ -2217,5 +2217,30 @@
         }
       }
     }
+  ],
+  "architecture_notes": [
+    {
+      "id": "arch01",
+      "title": "not_mappable is correct \u2014 EscapeToShell owns the shell path",
+      "observed": "transition2exec returns not_mappable for abstract tools like check_python_version, check_git_status, check_disk_usage, find_python_source_files.",
+      "interpretation": "This is correct behavior, not a gap. When transition2exec cannot map an abstract tool to a catalog tool, it signals not_mappable. The kernel then invokes CreateTransitionHandler \u2192 EscapeToShell (Transition2ShellClient), which generates the shell command. transition2exec should never be expected to emit run_shell_command directly for arbitrary shell operations \u2014 that is EscapeToShell responsibility.",
+      "implication": "Tests that assert run_shell_command for pure-shell abstract tools are asserting the wrong thing. The correct assertion is not_mappable \u2192 EscapeToShell path is taken."
+    },
+    {
+      "id": "arch02",
+      "title": "Wrong catalog tool chosen \u2014 catalog description gap, not a model gap",
+      "observed": "transition2exec maps count_lines_in_file to read_file (should be not_mappable). Maps run_project_init_script to make_directory (wrong catalog tool entirely).",
+      "root_cause": "Catalog tool descriptions are too shallow. read_file does not explicitly exclude counting/metrics. make_directory does not exclude script execution. Model matches on keyword proximity rather than semantic intent.",
+      "fix": "Strengthen catalog descriptions with explicit NOT clauses. read_file: add \u2014 Does NOT count lines, compute metrics, or execute the file. make_directory: add \u2014 Does NOT run scripts, initialize projects, or execute commands inside the directory.",
+      "escalation_path": "When catalog descriptions still cannot disambiguate, the correct escalation is EscapeToHuman (clarification request) or EscapeToEnvironment (probe the filesystem for context). Future capability.",
+      "status": "actionable \u2014 catalog description improvement is the near-term fix"
+    },
+    {
+      "id": "arch03",
+      "title": "run_shell_command in available_tools creates ambiguity",
+      "observed": "Passing run_shell_command in available_tools to transition2exec causes inconsistent behavior: sometimes correctly used (compress, lint), sometimes wrong catalog tool is chosen instead.",
+      "recommendation": "Consider removing run_shell_command from available_tools passed to transition2exec. All shell operations become not_mappable \u2192 EscapeToShell. This makes the boundary clean: transition2exec owns catalog-tool grounding only; Transition2ShellClient owns shell command generation.",
+      "tradeoff": "Current tests sh04 (compress \u2192 tar) and sh06 (read \u2192 lint) pass because transition2exec correctly uses run_shell_command. Removing it would make them not_mappable too, handled by EscapeToShell."
+    }
   ]
 }

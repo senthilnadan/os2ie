@@ -54,8 +54,8 @@ def apply_binding(state: dict, output_binding: dict, tool_outputs: dict) -> dict
 # ---------------------------------------------------------------------------
 
 @pytest.mark.xfail(strict=True,
-    reason="gap: transition2exec returns not_mappable for check_python_version; "
-           "should ground to run_shell_command with python3 --version")
+    reason="expected: not_mappable is correct — EscapeToShell owns python version check. "
+           "transition2exec correctly signals it cannot catalog-ground this operation.")
 def test_sh01_python_version_then_write():
     """T1: shell python3 --version → stdout. output_binding stdout→python_version.
     T2: create_file writes python_version to a report file."""
@@ -147,8 +147,8 @@ def test_sh02_shell_move_then_verify():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.xfail(strict=True,
-    reason="gap: transition2exec maps count_lines_in_file to read_file instead of "
-           "run_shell_command; wc -l is the correct grounding")
+    reason="catalog description gap: count_lines_in_file mapped to read_file — "
+           "read_file description needs explicit NOT-counting clause to prevent this.")
 def test_sh03_count_lines_then_write_report():
     """T1: shell wc -l on file. output_binding stdout→line_count.
     T2: create_file writes line_count to report."""
@@ -234,8 +234,8 @@ def test_sh04_compress_then_verify_archive():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.xfail(strict=True,
-    reason="gap: transition2exec returns not_mappable for check_git_status; "
-           "should ground to run_shell_command with git status")
+    reason="expected: not_mappable is correct — EscapeToShell owns git status. "
+           "transition2exec correctly signals it cannot catalog-ground this operation.")
 def test_sh05_git_status_then_save():
     """T1: shell git status. output_binding stdout→status_output.
     T2: create_file saves status_output."""
@@ -331,8 +331,8 @@ def test_sh07_list_then_count_python_files():
 
     exec2 = compile_t(t2, state_after_t1)
     if exec2.status == "not_mappable":
-        pytest.xfail("gap: transition2exec returns not_mappable for count_python_source_files; "
-                     "should ground to run_shell_command with find/wc")
+        pytest.xfail("expected: not_mappable is correct — EscapeToShell owns counting. "
+                     "transition2exec correctly cannot catalog-ground this operation.")
     g2 = grounded(exec2)
     assert g2.tool == "run_shell_command", f"T2 expected run_shell_command, got {g2.tool}"
     cmd = g2.inputs.get("command", "")
@@ -365,12 +365,11 @@ def test_sh08_make_dir_then_run_init_script():
 
     exec2 = compile_t(t2, state_after_t1)
     if exec2.status == "not_mappable":
-        pytest.xfail("gap: transition2exec returns not_mappable for run_project_init_script; "
-                     "should ground to run_shell_command")
+        pytest.xfail("expected: not_mappable — EscapeToShell owns script execution.")
     g2 = grounded(exec2)
     if g2.tool != "run_shell_command":
-        pytest.xfail(f"gap: transition2exec grounded run_project_init_script to {g2.tool!r} "
-                     f"instead of run_shell_command — wrong catalog tool chosen")
+        pytest.xfail(f"catalog description gap: run_project_init_script grounded to {g2.tool!r} — "
+                     f"make_directory description needs NOT-script-execution clause.")
     assert "command" in g2.inputs
 
 
@@ -399,8 +398,8 @@ def test_sh09_check_exists_then_validate_config():
 
     exec2 = compile_t(t2, state_after_t1)
     if exec2.status == "not_mappable":
-        pytest.xfail("gap: transition2exec returns not_mappable for validate_yaml_config; "
-                     "should ground to run_shell_command with python/yamllint")
+        pytest.xfail("expected: not_mappable is correct — EscapeToShell owns config validation. "
+                     "transition2exec correctly cannot catalog-ground this operation.")
     g2 = grounded(exec2)
     assert g2.tool == "run_shell_command", f"T2 expected run_shell_command, got {g2.tool}"
     cmd = g2.inputs.get("command", "")
@@ -413,8 +412,8 @@ def test_sh09_check_exists_then_validate_config():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.xfail(strict=True,
-    reason="gap: transition2exec returns not_mappable for find_python_source_files; "
-           "should ground to run_shell_command with find command")
+    reason="expected: not_mappable is correct — EscapeToShell owns file finding. "
+           "transition2exec correctly signals it cannot catalog-ground this operation.")
 def test_sh10_find_files_then_grep():
     """T1: shell find .py files. output_binding stdout→file_list.
     T2: shell grep 'import' through the file_list."""
@@ -458,8 +457,8 @@ def test_sh10_find_files_then_grep():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.xfail(strict=True,
-    reason="gap: transition2exec returns not_mappable for check_disk_usage; "
-           "should ground to run_shell_command with df -h")
+    reason="expected: not_mappable is correct — EscapeToShell owns disk usage check. "
+           "transition2exec correctly signals it cannot catalog-ground this operation.")
 def test_sh11_disk_space_then_write_report():
     """T1: shell df -h. output_binding stdout→disk_info.
     T2: create_file writes disk_info as content of report file."""
@@ -535,8 +534,8 @@ def test_sh12_run_tests_then_write_report():
 
     exec2 = compile_t(t2, state_after_t1)
     if exec2.status == "not_mappable":
-        pytest.xfail("gap: transition2exec returns not_mappable for save_test_report; "
-                     "should ground to create_file")
+        pytest.xfail("catalog description gap: save_test_report returns not_mappable — "
+                     "abstract tool name too distant from create_file description.")
     g2 = grounded(exec2)
     assert g2.tool == "create_file", f"T2 expected create_file, got {g2.tool}"
     assert g2.inputs.get("file_path") == "/tmp/os2ie_sandbox/test_report.txt"
