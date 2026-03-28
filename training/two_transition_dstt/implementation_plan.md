@@ -5,165 +5,136 @@
 
 ---
 
-## What already works
+## Underlying assumptions
 
-The kernel loop already handles two-transition DSTTs correctly:
+**State threading is a kernel guarantee.** The kernel loop always passes updated state
+to the next compile call. This is mechanical — not tested, taken as given.
 
-```
-for segment in abstract_dstt.segments:
-    for abstract_transition in segment.transitions:
-        # COMPILE — state passed in includes everything accumulated so far
-        exec_dstt = t2e.compile(task, state, abstract_transition, available_tools)
-
-        # DISPATCH
-        state.update(grounded.inputs)   # PATCH
-        outputs = tool_fn(state)        # DISPATCH
-        state.update(outputs)           # MERGE — T1 outputs now in state
-
-        # Loop continues → T2 compile receives updated state
-```
-
-After T1 dispatches, `state` contains T1's output keys. T2's `t2e.compile()` call
-receives this updated state — transition2exec sees T1's outputs as available context
-when resolving T2's inputs. **No kernel changes required.**
+**Declared outputs are the contract.** Each `AbstractTransition.outputs` is the list
+of keys that transition promises to produce in state. This is the only signal the
+kernel has to verify that a transition actually did what it said.
 
 ---
 
-## What needs to be built
+## Step 0 — Finally transition (kernel change, prerequisite)
 
-### 1. Extend StubTransition2ExecClient — capture compile-time state
+Before T2 can compile, we must know that T1 actually delivered its declared outputs.
+Without this check, T2 compiles against incomplete state and produces a silent wrong
+result.
 
-The stub currently pops queued responses without recording arguments.
-For two-transition tests, we must assert that T2's compile received T1's outputs
-in the `state` argument.
+**The finally transition is a deterministic closure check run by the kernel after each
+transition dispatches.** It is not an LLM call and not a tool call. It verifies:
 
-**Change:** add `captured_states: list[dict]` — records the `state` passed to each
-`compile()` call in order.
+```
+for key in abstract_transition.outputs:
+    assert key in state
+```
+
+If any declared output key is absent → the transition did not honour its contract →
+fire the escape hatch immediately, before the next transition starts.
+
+### Execution flow with finally transition
+
+```
+T1 compile → T1 dispatch → state.update(T1 outputs)
+  → finally: T1.outputs ⊆ state?
+      NO  → escape hatch (fail / escalate) — T2 never runs
+      YES → T2 compile (state is clean and complete)
+              → T2 dispatch → state.update(T2 outputs)
+                → finally: T2.outputs ⊆ state?
+                    NO  → escape hatch
+                    YES → segment milestone check → complete
+```
+
+### Kernel change
+
+After the MERGE step (`state.update(outputs)`) and output_binding, add:
 
 ```python
-# tests/stub_t2e.py addition
-class StubTransition2ExecClient:
-    def __init__(self, responses):
-        self._queue = list(responses)
-        self.captured_states: list[dict] = []   # NEW
-        # ... existing validation ...
-
-    def compile(self, task, state, abstract_transition, available_tools=None):
-        self.captured_states.append(dict(state))   # NEW — snapshot before compile
-        if not self._queue:
-            raise RuntimeError("no more responses queued")
-        return self._queue.pop(0), {}
+# Finally transition — verify declared outputs landed in state
+missing = [k for k in abstract_transition.outputs if k not in state]
+if missing:
+    return _fail(
+        execution_log, state, segments_completed, milestone_reached,
+        abstract_transition.id, abstract_transition.tool,
+        grounded.inputs,
+        f"finally: declared outputs missing from state: {missing}"
+    )
 ```
 
-**Assert pattern in tests:**
-```python
-# T2's compile saw T1's output in state
-assert "text" in stub.captured_states[1]
-assert stub.captured_states[1]["text"] == "hello world"
-```
+This is the escape hatch. It fires before the next transition compiles.
+
+### Why this matters for two-transition seeds
+
+Seeds tt01 and tt06 thread `text → content` — T2's `content` input is resolved from
+`text` in state (T1's output). If the finally transition fires after T1 and finds
+`text` missing, T2 never compiles. Without the check, T2 would compile with no `text`
+in state and produce a wrong or hallucinated binding.
 
 ---
 
-### 2. Test-scoped tool stubs — deterministic dispatch
+## Step 1 — Test the finally transition (unit tests)
 
-Tools (read_file, create_file, etc.) touch the real filesystem. Tests must not depend
-on real files. Introduce a test-scoped tool registry override:
+Three focused tests — no LLM, no live service:
 
-```python
-# tests/stub_tools.py
-from src import tools
+| Test | Scenario | Expected |
+|------|----------|----------|
+| `test_finally_pass` | T1 outputs all declared keys | T2 compiles and runs |
+| `test_finally_fail_missing_output` | T1 tool returns output with wrong key name | kernel fails before T2, log has finally error |
+| `test_finally_fail_partial_output` | T1 returns one of two declared outputs | kernel fails before T2 |
 
-def patch_tool_registry(monkeypatch, overrides: dict[str, callable]):
-    """Replace named tools in TOOL_REGISTRY for the duration of a test."""
-    for name, fn in overrides.items():
-        monkeypatch.setitem(tools.TOOL_REGISTRY, name, fn)
-```
-
-Each test provides deterministic tool stubs:
-```python
-def stub_read_file(state):
-    return {"text": "hello world"}
-
-def stub_create_file(state):
-    return {"success": True}
-```
+Uses `StubTransition2ExecClient` + deterministic tool stubs. No filesystem.
 
 ---
 
-### 3. Test structure — per seed
+## Step 2 — Live service test runner
 
-Each of the 8 seeds becomes one test. Common pattern:
+With the finally transition in place, test the full two-transition compile flow
+against the live transition2exec service.
 
-```
-test_tt<N>_<scenario_name>:
-  1. Build AbstractDSTT from seed (two transitions, one segment)
-  2. Build initial_context from seed
-  3. Queue two stub t2e responses (T1 compiled tool, T2 compiled tool)
-  4. Patch tool registry with deterministic stubs
-  5. Run kernel.execute()
-  6. Assert A — T2 compile received T1 outputs in state
-  7. Assert B — final state contains all expected keys
-  8. Assert C — milestone_reached matches seed milestone
-  9. Assert D — execution_log has 2 entries, both ok
-  10. Assert E — result.status == "completed"
-```
+**Per seed:**
+1. Call transition2exec with T1's abstract transition + initial_context → get compiled T1
+2. Simulate T1 dispatch — inject seed's `expected.t1.state_after` values into state
+   (no real tool call — state is seeded deterministically)
+3. Finally check: verify T1's declared outputs are in state (must pass, state was seeded)
+4. Call transition2exec with T2's abstract transition + enriched state → get compiled T2
+5. Assert T2's resolved inputs match `expected.t2.resolved_inputs` from seed
 
----
-
-### 4. Assertions per seed
-
-| Assert | What it proves |
-|--------|----------------|
-| `stub.captured_states[1]` contains T1 output keys | State threaded correctly — T2 compile sees T1 output |
-| `stub.captured_states[0]` does NOT contain T1 output keys | State was empty of T1 outputs before T1 ran |
-| `result.state` contains initial_context + T1 outputs + T2 outputs | Cumulative merge — nothing dropped |
-| `result.milestone_reached` ⊇ seed milestone | Milestone validates correctly after both transitions |
-| `len(result.execution_log) == 2` | Both transitions executed |
-| All log entries `status == "ok"` | No dispatch errors |
-| `result.status == "completed"` | Full segment completed |
+**What this validates:** transition2exec correctly resolves T2's inputs from enriched
+state — specifically the cases where T2's input key is satisfied by T1's output key
+(e.g. `content` ← `text`, `file_path` ← `destination_path`).
 
 ---
 
-### 5. Key state threading cases to cover
-
-| Seed | Thread | What assert A checks |
-|------|--------|----------------------|
-| tt01 | `text → content` | `captured_states[1]["text"] == <T1 output>` |
-| tt02 | `created` in state | `captured_states[1]["created"] == True` |
-| tt03 | `copied` in state | `captured_states[1]["copied"] == True` |
-| tt04 | `is_present` in state | `captured_states[1]["is_present"] == True` |
-| tt05 | `entries` in state | `captured_states[1]["entries"] == [...]` |
-| tt06 | `text → content` | `captured_states[1]["text"] == <T1 output>` |
-| tt07 | `created` in state | `captured_states[1]["created"] == True` |
-| tt08 | `deleted` in state | `captured_states[1]["deleted"] == True` |
-
----
-
-### 6. File layout
+## Step 3 — File layout
 
 ```
+src/kernel.py                           MODIFIED — finally transition check after MERGE
+
 tests/
-  stub_tools.py                       NEW — tool registry patch helper
-  test_two_transition_dstt.py         NEW — 8 tests (one per seed)
-
-tests/stub_t2e.py                     MODIFIED — add captured_states
+  test_two_transition_finally.py        NEW — 3 unit tests for finally transition
+  test_two_transition_live.py           NEW — 8 live service tests (one per seed)
 ```
 
 ---
 
 ## Execution order
 
-1. Extend `stub_t2e.py` — add `captured_states`
-2. Create `tests/stub_tools.py` — tool registry patch helper
-3. Write `tests/test_two_transition_dstt.py` — 8 tests
-4. Run `pytest tests/test_two_transition_dstt.py -v`
-5. All 8 pass → commit + push
+1. Add finally transition check to `src/kernel.py`
+2. Write `tests/test_two_transition_finally.py` — 3 unit tests, must pass
+3. Write `tests/test_two_transition_live.py` — 8 live service tests
+4. Run unit tests: `pytest tests/test_two_transition_finally.py -v`
+5. Run live tests against transition2exec service
+6. Commit + push
 
 ---
 
 ## Pass criteria
 
-- 8/8 tests passing
-- Assert A confirmed for all 8: T2's compile received T1's outputs in state
-- No test touches the real filesystem
-- No kernel changes required — the loop already threads state correctly
+| Check | Pass condition |
+|-------|----------------|
+| Finally unit tests | 3/3 — missing output fires escape hatch before T2 |
+| Live T1 compile | 8/8 — transition2exec maps T1 correctly |
+| Live T2 compile | 8/8 — transition2exec resolves T2 inputs from enriched state |
+| Key thread cases | tt01, tt06 `text → content` resolved correctly |
+| Escape hatch | Finally fires before T2 when T1 output missing |
