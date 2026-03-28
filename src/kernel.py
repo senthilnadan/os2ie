@@ -93,6 +93,19 @@ def execute(
                     status="ok",
                 ))
 
+            # 3. FINALLY LATCH — verify declared outputs landed in state.
+            # Checks abstract_transition.outputs (the contract), not grounded outputs.
+            # output_binding must have mapped shell/tool keys to abstract keys by now.
+            # If any declared output is missing, the transition did not honour its
+            # contract — fire escape hatch before the next transition compiles.
+            missing = [k for k in abstract_transition.outputs if k not in state]
+            if missing:
+                return _fail(
+                    execution_log, state, segments_completed, milestone_reached,
+                    abstract_transition.id, abstract_transition.tool,
+                    {}, f"finally: declared outputs missing from state: {missing}",
+                )
+
         reached = [k for k in segment.milestone if k in state]
         milestone_reached.extend(reached)
         segments_completed += 1
