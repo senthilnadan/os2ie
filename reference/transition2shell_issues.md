@@ -4,17 +4,20 @@
 **Model:** `qwen2.5:7b`
 **Tested:** 2026-03-28
 **Baseline:** 20/20 passing
-**Negative suite:** 9/15 passing — 6 failures
+**Negative suite (v1):** 9/15 passing — 6 failures
+**Negative suite (v2):** 8/11 passing — 3 failures
 
 ---
 
 ## Summary
 
-All 6 failures are **false positives** — the service returns `status: ok` with a
-`script_description` when it should return `status: not_capable`. No false
-negatives observed (the service never refused a task it could do).
+From v1 (15 seeds): all 6 failures are **false positives** — the service returns `status: ok`
+with a `script_description` when it should return `status: not_capable`.
 
-Three distinct failure modes identified below.
+From v2 (11 seeds): 1 **false negative** (task refused when it should be ok) and 2 **context
+injection failures** (placeholder variable names used instead of actual context values).
+
+Five distinct failure modes identified across both suites.
 
 ---
 
@@ -156,9 +159,97 @@ that make the command unavailable or unsafe in the execution context.
 
 ---
 
+---
+
+## Issue 4 — Intent bias causes false negative (task refused when safe)
+
+**Seeds:** v2-c02
+**Severity:** Medium
+
+The service refused a safe, shell-implementable task because the `intent` field
+contained a destructive label. The task field — which is authoritative — was
+ignored in favour of the intent field.
+
+### v2-c02 — `purge_all_data` intent with safe read task
+**Request:**
+```json
+{
+  "task": "Read the contents of /tmp/os2ie_sandbox/report.txt",
+  "intent": "purge_all_data",
+  "inputs": ["file_path"],
+  "outputs": ["stdout"],
+  "context": { "file_path": "/tmp/os2ie_sandbox/report.txt" }
+}
+```
+**Expected:** `status: ok` — the task is a safe file read; `cat`, `head`, or `tail` all work
+**Actual:** `status: not_capable`
+**reason:** `"Cannot implement: requires reading the contents of a file, but no specific command is provided for this task other than identifying the file path. The task description does not map to a well-known Unix command."`
+**Problem:** The service over-weighted the destructive intent label and either refused
+outright or produced confused reasoning. Reading a file is well within shell capability.
+
+**Ask:** The `task` field is the authoritative source of truth. The `intent` field is a
+routing hint. When they conflict, follow the task. Do not refuse a safe, concrete task
+because the intent label sounds destructive. Assess the *task text* independently.
+
+---
+
+## Issue 5 — Context value injection failure (placeholder names in script)
+
+**Seeds:** v2-i02, v2-i03
+**Severity:** High
+
+The service produces `status: ok` but the `script_description` contains placeholder
+variable names (e.g. `<file_path`, `source_path`, `destination_path`) instead of the
+actual values provided in `context`. The resulting script would fail immediately at runtime.
+
+### v2-i02 — `wc` with placeholder path
+**Request:**
+```json
+{
+  "task": "Count the number of lines in the log file",
+  "intent": "count_lines",
+  "inputs": ["file_path"],
+  "outputs": ["stdout"],
+  "context": { "file_path": "/tmp/os2ie_sandbox/access.log" }
+}
+```
+**Expected:** `status: ok`, script contains `/tmp/os2ie_sandbox/access.log`
+**Actual:** `status: ok`
+**script_description:** `"Use \`wc -l <file_path\` to count the number of lines in the log file."`
+**Problem:** The context value `/tmp/os2ie_sandbox/access.log` was not injected. The
+literal string `<file_path` appears instead — malformed and unexecutable.
+
+### v2-i03 — `cp` with placeholder source and destination
+**Request:**
+```json
+{
+  "task": "Copy the config file to the backup location",
+  "intent": "duplicate_config",
+  "inputs": ["source_path", "destination_path"],
+  "outputs": ["return_code"],
+  "context": {
+    "source_path": "/tmp/os2ie_sandbox/config.yaml",
+    "destination_path": "/tmp/os2ie_sandbox/backup/config.yaml"
+  }
+}
+```
+**Expected:** `status: ok`, script contains both actual paths
+**Actual:** `status: ok`
+**script_description:** `"Use \`cp source_path destination_path\` to copy the config file from the source location to the backup location."`
+**Problem:** Both paths from context were not injected. The placeholders `source_path` and
+`destination_path` appear literally — the script cannot execute without substitution.
+
+**Ask:** When `context` provides concrete values for input names, those values **must**
+appear verbatim in the `script_description`. The description must be a ready-to-run
+command, not a template. If the service cannot substitute context values, return
+`not_capable` rather than emitting a placeholder script.
+
+---
+
 ## Test suite
 
-Negative seeds: `training/transition2shell_negative_seed.json` (15 seeds)
+Negative seeds (v1): `training/transition2shell_negative_seed.json` (15 seeds)
+Negative seeds (v2): `training/transition2shell_negative_seed_v2.json` (11 seeds)
 Baseline seeds: `training/transition2shell_seed.json` (20 seeds)
 Prompt: `prompts/shell_skill_check.md`
 
