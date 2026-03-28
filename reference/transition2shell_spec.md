@@ -20,11 +20,16 @@ Given an abstract transition that could not be mapped by `transition2exec`,
    abstract task can be fully implemented using shell commands available on
    a generic Unix system.
 
-2. **Produce the executable transition** — if viable, generate an
-   `ExecutableDSTT` using `run_shell_command` with a concrete, correct command.
+2. **Produce a script description** — if viable, return a plain-English
+   description of the shell script that would implement the task, including
+   the concrete command(s) to use. Nothing more — no transition assembly.
 
 3. **Signal not_capable** — if the task cannot be done with a shell script,
    return `status: not_capable`. The caller escalates immediately.
+
+`CreateTransitionHandler` owns the assembly step — it takes the
+`script_description` and constructs the `ExecutableTransition` with
+`run_shell_command` as the tool.
 
 ---
 
@@ -51,18 +56,7 @@ Given an abstract transition that could not be mapped by `transition2exec`,
 ```json
 {
   "status": "ok",
-  "executable_transition": {
-    "id": "t1",
-    "tool": "run_shell_command",
-    "inputs": {
-      "command": "<concrete shell command>"
-    },
-    "outputs": {},
-    "output_binding": {
-      "stdout": "<abstract output key>",
-      "return_code": "<abstract return key>"
-    }
-  }
+  "script_description": "Use `cp /src/path /dst/path` to copy the file from source to destination."
 }
 ```
 
@@ -125,13 +119,24 @@ key into state.
 
 ## Caller: CreateTransitionHandler
 
+`Transition2Shell` returns only `script_description`.
+`CreateTransitionHandler` owns the assembly of the `ExecutableTransition`.
+
 ```python
 result = t2s.compile(task, abstract_transition, context)
 
 if result.status == "not_capable":
     return Escalation(reason=result.reason, ...)
 
-return EscapeToShell(executable_transition=result.executable_transition, ...)
+# Assembly — CreateTransitionHandler's responsibility
+executable_transition = ExecutableTransition(
+    id=abstract_transition.id,
+    tool="run_shell_command",
+    inputs={"command": result.script_description},
+    outputs={},
+    output_binding=_bind_shell_outputs(abstract_transition.outputs),
+)
+return EscapeToShell(executable_transition=executable_transition, ...)
 ```
 
 ---
@@ -151,7 +156,7 @@ return EscapeToShell(executable_transition=result.executable_transition, ...)
 | Property | Value |
 |----------|-------|
 | Input | `task` + `abstract_transition` + `context` |
-| Output (ok) | `ExecutableTransition` with `run_shell_command` |
+| Output (ok) | `script_description: str` |
 | Output (not_capable) | `status: not_capable` + `reason` |
 | Tool produced | always `run_shell_command` |
 | Prompt | `prompts/shell_skill_check.md` |
