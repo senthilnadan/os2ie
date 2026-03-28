@@ -1,0 +1,339 @@
+{
+  "_title": "transition2exec grounding seeds — input resolution and state pollution",
+
+  "_problem_statement": "transition2exec receives the full accumulated state from the kernel. In multi-transition executions, state contains output keys from ALL previous transitions. This creates two failure modes:\n\n  1. STATE POLLUTION: A previous transition left source_path+destination_path in state. The next transition has a different intent (read, not copy), but transition2exec sees those keys and re-selects copy_file.\n\n  2. INPUT RESOLUTION AMBIGUITY: State contains multiple keys of similar type (file_path, archive_path, report_path, backup_path). transition2exec must resolve the correct one for each abstract input.\n\nThe fix in both cases is the same: USE THE ABSTRACT TRANSITION'S DECLARED INPUT NAMES AS RESOLUTION ANCHORS. The declared input name is the semantic contract. Match it to the closest key in state by name, then by value type.",
+
+  "_resolution_rule": "For each name in abstract_transition.inputs:\n  1. If an exact key match exists in state → use it.\n  2. If no exact match → find the state key whose name is most semantically similar to the abstract input name.\n  3. DO NOT look at unused state keys that are not referenced in abstract_transition.inputs.\n  4. DO NOT let previous-transition tool choices (copy_file, move_file residue) influence the current tool selection.",
+
+  "seeds": [
+
+    {
+      "id": "gr01",
+      "_gap": "state_pollution",
+      "_scenario": "After copy_file (T2), state has source_path + destination_path. T3 declares input [destination_path] with intent to READ the copied file. Should ground to read_file, not copy_file.",
+      "_teaching_point": "The presence of source_path in state is T2 residue. T3 only declared destination_path as its input. source_path is irrelevant to T3. Use declared inputs as the exclusive anchor.",
+      "task": "Create workspace, copy source.py into it, then read the copied file",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/workspace",
+        "source_path": "/tmp/os2ie_sandbox/main.py",
+        "destination_path": "/tmp/os2ie_sandbox/workspace/main.py",
+        "report_path": "/tmp/os2ie_sandbox/workspace/report.txt",
+        "created": true,
+        "copied": true
+      },
+      "abstract_transition": {
+        "id": "t3",
+        "tool": "read_workspace_source",
+        "inputs": ["destination_path"],
+        "outputs": ["text"]
+      },
+      "wrong_grounding": {
+        "tool": "copy_file",
+        "why_wrong": "Model saw source_path+destination_path in state (residue from T2 copy_file) and repeated the copy pattern. T3 declares only destination_path as input — source_path is irrelevant here."
+      },
+      "correct_grounding": {
+        "tool": "read_file",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/workspace/main.py" },
+        "output_binding": {},
+        "reasoning": "T3 declares input [destination_path]. destination_path=/tmp/os2ie_sandbox/workspace/main.py. The task is to READ this file. read_file is the correct tool. source_path is T2 residue — ignore it."
+      }
+    },
+
+    {
+      "id": "gr02",
+      "_gap": "state_pollution",
+      "_scenario": "After move_file (T2), state has source_path + destination_path. T3 declares input [destination_path] with intent to VERIFY the moved file exists. Should ground to exists, not move_file.",
+      "_teaching_point": "moved=True in state confirms T2 completed. T3 only declared destination_path. source_path is T2 residue.",
+      "task": "List deploy directory, move artifact to backup, then verify backup exists",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/deploy",
+        "source_path": "/tmp/os2ie_sandbox/deploy/app.sh",
+        "destination_path": "/tmp/os2ie_sandbox/backup/app.sh",
+        "entries": ["app.sh", "config.yaml"],
+        "moved": true
+      },
+      "abstract_transition": {
+        "id": "t3",
+        "tool": "verify_backup_present",
+        "inputs": ["destination_path"],
+        "outputs": ["is_present"]
+      },
+      "wrong_grounding": {
+        "tool": "move_file",
+        "why_wrong": "Model saw source_path+destination_path in state and re-applied move_file. moved=True already confirms T2 completed. T3 declares only destination_path — source_path is irrelevant."
+      },
+      "correct_grounding": {
+        "tool": "exists",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/backup/app.sh" },
+        "output_binding": {},
+        "reasoning": "T3 declares input [destination_path]. destination_path=/tmp/os2ie_sandbox/backup/app.sh. The intent is to verify. exists is the correct tool. source_path + moved are T2 residue — ignore them."
+      }
+    },
+
+    {
+      "id": "gr03",
+      "_gap": "state_pollution",
+      "_scenario": "After copy_file (T2), state has source_path + destination_path. T3 declares inputs [destination_path, report_path] with intent to compute a metric and write it. Should ground to run_shell_command, not copy_file.",
+      "_teaching_point": "T3 declares two inputs. Only destination_path and report_path matter. source_path is T2 residue.",
+      "task": "Make workspace, copy source into it, write a line count of the copy to report.txt",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/workspace",
+        "source_path": "/tmp/os2ie_sandbox/main.py",
+        "destination_path": "/tmp/os2ie_sandbox/workspace/main.py",
+        "report_path": "/tmp/os2ie_sandbox/workspace/report.txt",
+        "created": true,
+        "copied": true
+      },
+      "abstract_transition": {
+        "id": "t3",
+        "tool": "count_lines_and_write_report",
+        "inputs": ["destination_path", "report_path"],
+        "outputs": ["success"]
+      },
+      "wrong_grounding": {
+        "tool": "copy_file",
+        "why_wrong": "source_path+destination_path residue from T2 triggered copy_file again. T3 intent is line-counting and writing — a shell operation."
+      },
+      "correct_grounding": {
+        "tool": "run_shell_command",
+        "inputs": { "command": "wc -l /tmp/os2ie_sandbox/workspace/main.py > /tmp/os2ie_sandbox/workspace/report.txt" },
+        "output_binding": { "return_code": "success" },
+        "reasoning": "T3 declares inputs [destination_path, report_path]. Count lines of destination_path and write to report_path. wc -l piped to report_path is the correct shell command. source_path is T2 residue."
+      }
+    },
+
+    {
+      "id": "gr04",
+      "_gap": "input_resolution_ambiguity",
+      "_scenario": "State has source_path + archive_path. T3 declares input [archive_path]. Model must resolve to archive.log, not today.log (source_path).",
+      "_teaching_point": "Abstract input name 'archive_path' exactly matches state key 'archive_path'. Use exact name match. source_path is a different semantic concept.",
+      "task": "Read today's log, append it to archive.log, then verify archive.log exists",
+      "context": {
+        "source_path": "/tmp/os2ie_sandbox/today.log",
+        "archive_path": "/tmp/os2ie_sandbox/archive.log",
+        "text": "2026-03-28 build ok",
+        "success": true
+      },
+      "abstract_transition": {
+        "id": "t3",
+        "tool": "verify_archive",
+        "inputs": ["archive_path"],
+        "outputs": ["is_present"]
+      },
+      "wrong_grounding": {
+        "tool": "exists",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/today.log" },
+        "why_wrong": "Model resolved file_path from source_path (today.log) instead of archive_path (archive.log). The declared input name 'archive_path' is an exact match to the state key 'archive_path'."
+      },
+      "correct_grounding": {
+        "tool": "exists",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/archive.log" },
+        "output_binding": {},
+        "reasoning": "T3 declares input [archive_path]. Exact match in state: archive_path=/tmp/os2ie_sandbox/archive.log. source_path is a different key — do not use it."
+      }
+    },
+
+    {
+      "id": "gr05",
+      "_gap": "input_resolution_ambiguity",
+      "_scenario": "State has file_path + report_path + backup_path. T2 declares input [report_path]. Must resolve to report.txt, not file_path or backup_path.",
+      "_teaching_point": "Three file-path-like keys in state. Declared input 'report_path' exactly matches state key 'report_path'. Use exact match — do not guess from file_path.",
+      "task": "Read config, write a summary report, verify the report exists",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/config.yaml",
+        "report_path": "/tmp/os2ie_sandbox/reports/summary.txt",
+        "backup_path": "/tmp/os2ie_sandbox/backup/config.yaml",
+        "text": "database_url: postgres://localhost/db",
+        "is_present": true
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "write_config_summary",
+        "inputs": ["report_path", "content"],
+        "outputs": ["success"]
+      },
+      "wrong_grounding": {
+        "tool": "create_file",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/config.yaml", "content": "..." },
+        "why_wrong": "Model resolved file_path from the generic 'file_path' state key instead of the declared 'report_path'. The output should be written to report_path, not overwriting the source config."
+      },
+      "correct_grounding": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/reports/summary.txt",
+          "content": "database_url: postgres://localhost/db"
+        },
+        "output_binding": {},
+        "reasoning": "T2 declares inputs [report_path, content]. report_path is an exact key match → /tmp/os2ie_sandbox/reports/summary.txt. content is resolved from state.text (semantic match). file_path and backup_path are not declared inputs for T2."
+      }
+    },
+
+    {
+      "id": "gr06",
+      "_gap": "input_resolution_ambiguity",
+      "_scenario": "State has log_path + config_path + report_path. T declares input [config_path]. Must resolve to config.yaml, not log_path or report_path.",
+      "_teaching_point": "Three distinct path keys. Declared input 'config_path' exactly matches state key 'config_path'.",
+      "task": "Run tests, validate config, save results",
+      "context": {
+        "log_path": "/tmp/os2ie_sandbox/test.log",
+        "config_path": "/tmp/os2ie_sandbox/config.yaml",
+        "report_path": "/tmp/os2ie_sandbox/report.txt",
+        "test_output": "5 passed",
+        "return_code": 0
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "validate_yaml_config",
+        "inputs": ["config_path"],
+        "outputs": ["valid"]
+      },
+      "wrong_grounding": {
+        "tool": "run_shell_command",
+        "inputs": { "command": "python3 -c \"...\" /tmp/os2ie_sandbox/test.log" },
+        "why_wrong": "Model picked log_path instead of config_path. Declared input 'config_path' exactly matches state key 'config_path'."
+      },
+      "correct_grounding": {
+        "tool": "run_shell_command",
+        "inputs": { "command": "python3 -c \"import yaml; yaml.safe_load(open('/tmp/os2ie_sandbox/config.yaml'))\"" },
+        "output_binding": { "return_code": "valid" },
+        "reasoning": "T2 declares input [config_path]. config_path=/tmp/os2ie_sandbox/config.yaml is an exact match. log_path and report_path are not declared inputs — ignore them."
+      }
+    },
+
+    {
+      "id": "gr07",
+      "_gap": "input_resolution_ambiguity",
+      "_scenario": "State has source_path + destination_path + backup_path. T4 declares input [backup_path]. Must resolve to backup.sh, not source_path or destination_path.",
+      "_teaching_point": "Three path keys in state from a multi-transition chain. T4 is the fourth transition and only cares about backup_path. exact name match wins.",
+      "task": "List dir, move artifact to backup, copy backup to archive, verify archive exists",
+      "context": {
+        "directory_path": "/tmp/os2ie_sandbox/deploy",
+        "source_path": "/tmp/os2ie_sandbox/deploy/app.sh",
+        "destination_path": "/tmp/os2ie_sandbox/backup/app.sh",
+        "backup_path": "/tmp/os2ie_sandbox/archive/app.sh",
+        "entries": ["app.sh"],
+        "moved": true,
+        "copied": true
+      },
+      "abstract_transition": {
+        "id": "t4",
+        "tool": "verify_archive_copy",
+        "inputs": ["backup_path"],
+        "outputs": ["is_present"]
+      },
+      "wrong_grounding": {
+        "tool": "exists",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/deploy/app.sh" },
+        "why_wrong": "Model picked source_path (deploy/app.sh) when backup_path (archive/app.sh) is the declared input and exact state key match."
+      },
+      "correct_grounding": {
+        "tool": "exists",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/archive/app.sh" },
+        "output_binding": {},
+        "reasoning": "T4 declares input [backup_path]. backup_path=/tmp/os2ie_sandbox/archive/app.sh is an exact match. source_path and destination_path are residue from T2/T3."
+      }
+    },
+
+    {
+      "id": "gr08",
+      "_gap": "state_pollution",
+      "_scenario": "After append_to_file (T3), state has file_path + content + text. T4 declares input [file_path] with intent to VERIFY the file exists. Should ground to exists, not append_to_file or create_file.",
+      "_teaching_point": "content and text in state are T1/T3 residue. T4 only declared file_path. The intent is verification.",
+      "task": "Read log, append to archive, verify archive exists",
+      "context": {
+        "source_path": "/tmp/os2ie_sandbox/today.log",
+        "archive_path": "/tmp/os2ie_sandbox/archive.log",
+        "text": "2026-03-28 build ok",
+        "success": true
+      },
+      "abstract_transition": {
+        "id": "t3",
+        "tool": "verify_archive_exists",
+        "inputs": ["archive_path"],
+        "outputs": ["is_present"]
+      },
+      "wrong_grounding": {
+        "tool": "append_to_file",
+        "why_wrong": "Model saw text+archive_path and repeated the append pattern from T2. T3 intent is verification — exists is correct."
+      },
+      "correct_grounding": {
+        "tool": "exists",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/archive.log" },
+        "output_binding": {},
+        "reasoning": "T3 declares input [archive_path] and output [is_present]. is_present is a boolean existence check — exists is the only catalog tool that produces is_present. text is T1 residue."
+      }
+    },
+
+    {
+      "id": "gr09",
+      "_gap": "input_resolution_ambiguity",
+      "_scenario": "State has version_path + artifact_path + working_directory + log_path. T4 declares input [log_path, content]. Must write to log_path, not version_path or artifact_path.",
+      "_teaching_point": "Four path keys in state from a 4-transition chain. T4 is the final transition — log_path is an exact match for the declared input.",
+      "task": "Read version, delete old artifact, run build, save build log",
+      "context": {
+        "version_path": "/tmp/os2ie_sandbox/version.txt",
+        "artifact_path": "/tmp/os2ie_sandbox/app-old.tar.gz",
+        "working_directory": "/tmp/os2ie_sandbox/project",
+        "log_path": "/tmp/os2ie_sandbox/build.log",
+        "text": "v2.4.1",
+        "deleted": true,
+        "stdout": "Build v2.4.1 ok",
+        "stderr": "",
+        "return_code": 0,
+        "build_output": "Build v2.4.1 ok"
+      },
+      "abstract_transition": {
+        "id": "t4",
+        "tool": "save_build_log",
+        "inputs": ["log_path", "content"],
+        "outputs": ["success"]
+      },
+      "wrong_grounding": {
+        "tool": "create_file",
+        "inputs": { "file_path": "/tmp/os2ie_sandbox/version.txt", "content": "v2.4.1" },
+        "why_wrong": "Model picked version_path as file_path and text(version) as content — re-writing the version file. T4 intent is to save build output (build_output) to log_path."
+      },
+      "correct_grounding": {
+        "tool": "create_file",
+        "inputs": {
+          "file_path": "/tmp/os2ie_sandbox/build.log",
+          "content": "Build v2.4.1 ok"
+        },
+        "output_binding": {},
+        "reasoning": "T4 declares inputs [log_path, content]. log_path=/tmp/os2ie_sandbox/build.log (exact match). content should resolve from build_output (most semantically recent shell output) not text (T1 version string)."
+      }
+    },
+
+    {
+      "id": "gr10",
+      "_gap": "state_pollution",
+      "_scenario": "After delete_file (T2), state has file_path + deleted=true. T3 is a shell build command that declares input [working_directory]. file_path should not contaminate the command. working_directory should anchor the command.",
+      "_teaching_point": "T3 only declared working_directory as input. file_path is T1/T2 residue. The build command should reference working_directory, not file_path.",
+      "task": "Delete old artifact, run build script in working directory, save log",
+      "context": {
+        "file_path": "/tmp/os2ie_sandbox/output.bin",
+        "working_directory": "/tmp/os2ie_sandbox/project",
+        "log_path": "/tmp/os2ie_sandbox/build.log",
+        "deleted": true
+      },
+      "abstract_transition": {
+        "id": "t2",
+        "tool": "run_build_script",
+        "inputs": ["working_directory"],
+        "outputs": ["build_output"]
+      },
+      "wrong_grounding": {
+        "tool": "run_shell_command",
+        "inputs": { "command": "make /tmp/os2ie_sandbox/output.bin" },
+        "why_wrong": "Model used file_path (the deleted artifact) as the command target. T2 only declared working_directory — the command should run in the project directory, not reference the deleted file."
+      },
+      "correct_grounding": {
+        "tool": "run_shell_command",
+        "inputs": { "command": "cd /tmp/os2ie_sandbox/project && make" },
+        "output_binding": { "stdout": "build_output" },
+        "reasoning": "T2 declares input [working_directory]. working_directory=/tmp/os2ie_sandbox/project anchors the command. file_path is T1 residue (deleted artifact) — do not reference it in the build command."
+      }
+    }
+
+  ]
+}
