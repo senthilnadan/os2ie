@@ -60,6 +60,52 @@ The kernel returned `status: completed` but `state: {}` — the answer (which bo
 ## Observations
 
 - Task 1 passing end-to-end confirms the pipeline works for file + shell chains.
-- Issues 2 and 3 are transition2shell capability gaps, not model reasoning gaps.
+- Issues 1 and 3 are transition2shell capability gaps, not model reasoning gaps.
 - Issue 2 (task 4 timeout) suggests task2plan struggles with constraint reasoning at 7B — this may be a genuine model size boundary (L4 in the challenge levels).
 - Issue 3 (task 5 empty state) is a task2plan output contract gap — solvable independently of model size.
+
+---
+
+## transition2exec Readiness — Recommendations for DSTT Challenge
+
+The following changes to transition2exec are needed before it can reliably handle the challenge tasks. These come from both observed failures and architectural review.
+
+### R1 — Output-first tool selection (highest priority)
+
+**Current behaviour:** transition2exec selects tools by matching available inputs first, then checks outputs.
+
+**Problem:** multiple tools share the same input signature. Example: `file_path` input matches `read_file`, `exists`, `delete_file`, `append_to_file` — wrong tool gets selected based on input proximity.
+
+**Fix:** reverse the selection priority:
+1. PRIMARY — match required abstract outputs against tool output signatures
+2. SECONDARY — confirm available inputs can satisfy tool inputs
+
+Example: abstract output `text` → only `read_file` produces `text` → unambiguous. This alone eliminates wrong-tool substitution for the majority of catalog tools.
+
+---
+
+### R2 — Mandatory output_binding in every response
+
+**Current behaviour:** `output_binding` is optional. When tool output key matches abstract output key by name, it is left empty.
+
+**Problem:** silent failures when keys don't match. The kernel cannot distinguish "matched correctly" from "model forgot to declare the binding."
+
+**Fix:** make `output_binding` mandatory in every grounded transition response. When names match, emit `{"text": "text"}` explicitly. This forces the model to reason about every output, not just the mismatched ones, and removes 80% of silent latch failures.
+
+---
+
+### R3 — Input resolution anchor rule (see INPUT_RESOLUTION_RULE.md)
+
+When state has multiple candidate keys, transition2exec must use the declared abstract input name as the exclusive anchor — not free-range over all state keys. Residue keys from prior transitions must be ignored.
+
+This is already documented in `training/transition2exec_grounding/INPUT_RESOLUTION_RULE.md`.
+
+---
+
+### Priority order for transition2exec team
+
+| # | Change | Impact | Effort |
+|---|--------|--------|--------|
+| R1 | Output-first selection | fixes wrong tool substitution | medium |
+| R2 | Mandatory output_binding | removes silent latch failures | low |
+| R3 | Input resolution anchor | fixes state pollution / name mismatch | low (prompt rule) |
