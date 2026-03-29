@@ -108,6 +108,18 @@ def build_catalog() -> list[dict[str, Any]]:
               [("directory_path", "str"), ("recursive", "bool")],
               [("removed", "bool")]),
 
+        _tool("evaluate_expression",
+              "Evaluate a single inline Python expression and return the result. "
+              "The expression must be self-contained — substitute all known values directly, "
+              "no variable assignments, no imports, no file references. "
+              "Examples: '((3 * 4) + 5) ** 2', "
+              "'[n*2 if n%3==0 else n+5 for n in range(1,7)]', "
+              "'int(bin(7)[2:][::-1], 2) * 3 - 5', "
+              "'sum(n for n in range(1,11) if n%2==0)'. "
+              "Does NOT read files, write files, or run shell commands.",
+              [("expression", "str")],
+              [("result", "any")]),
+
         _tool("run_shell_command",
               "Execute an arbitrary shell command and capture stdout, stderr, and return_code. "
               "Use this ONLY when no other catalog tool can fulfil the task — for example: "

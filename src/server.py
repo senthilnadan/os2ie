@@ -28,6 +28,7 @@ _available_tools = [t for t in _catalog if t["name"] != "run_shell_command"]
 class ExecuteRequest(BaseModel):
     task: str
     context: dict[str, Any] = {}
+    strategy: str = "input_first"
 
 
 @app.get("/health")
@@ -44,7 +45,7 @@ def execute_task(req: ExecuteRequest):
     abstract_dstt, meta = t2p.plan(req.task)
 
     result = execute(req.task, req.context, abstract_dstt, t2e,
-                     available_tools=_available_tools, t2s=t2s)
+                     available_tools=_available_tools, t2s=t2s, strategy=req.strategy)
 
     return result.model_dump()
 

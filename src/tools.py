@@ -89,6 +89,30 @@ def _run_shell_command(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _evaluate_expression(state: dict[str, Any]) -> dict[str, Any]:
+    """Safely evaluate a mathematical expression and return the result."""
+    expr = str(state["expression"]).strip()
+    # Strip accidental surrounding quotes added by the model
+    if len(expr) >= 2 and expr[0] == expr[-1] and expr[0] in ("'", '"'):
+        expr = expr[1:-1]
+    allowed = set("0123456789+-*/%().,<>=!&|^~ abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_[]{}:'\"\n\t")
+    if not all(c in allowed for c in expr):
+        raise ValueError(f"Unsafe characters in expression: {expr!r}")
+    # Build eval context: builtins + state values (simple types only)
+    ctx = {
+        "abs": abs, "round": round, "min": min, "max": max,
+        "sum": sum, "len": len, "range": range, "list": list,
+        "int": int, "float": float, "str": str, "bool": bool,
+        "bin": bin, "hex": hex, "ord": ord, "chr": chr,
+        "True": True, "False": False, "None": None,
+    }
+    for k, v in state.items():
+        if k != "expression" and isinstance(v, (int, float, str, bool, list, dict)):
+            ctx[k] = v
+    result = eval(expr, {"__builtins__": {}}, ctx)
+    return {"result": result}
+
+
 # subtask is wired in by the kernel (needs access to clients), so omitted here.
 TOOL_REGISTRY: dict[str, Any] = {
     "exists":                    _exists,
@@ -103,4 +127,5 @@ TOOL_REGISTRY: dict[str, Any] = {
     "make_directory":            _make_directory,
     "remove_directory":          _remove_directory,
     "run_shell_command":         _run_shell_command,
+    "evaluate_expression":       _evaluate_expression,
 }

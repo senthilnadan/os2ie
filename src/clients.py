@@ -29,6 +29,7 @@ class Transition2ExecClient:
         state: dict[str, Any],
         abstract_transition: AbstractTransition,
         available_tools: list[dict[str, Any]] | None = None,
+        strategy: str = "input_first",
     ) -> tuple[ExecutableDSTT, dict[str, Any]]:
         """
         Compile an abstract transition into an executable transition.
@@ -36,6 +37,8 @@ class Transition2ExecClient:
         available_tools is injected by the caller (provider/agent upstream).
         If not provided, an empty list is sent — the server must have its own
         fallback or the call will fail.
+
+        strategy: "input_first" (default), "output_first", or "scored"
         """
         resp = requests.post(
             self._url,
@@ -44,6 +47,7 @@ class Transition2ExecClient:
                 "context": state,
                 "abstract_transition": abstract_transition.model_dump(),
                 "available_tools": available_tools or [],
+                "strategy": strategy,
             },
         )
         resp.raise_for_status()

@@ -14,6 +14,7 @@ def execute(
     available_tools: list[dict[str, Any]],
     t2s: Transition2ShellClient | None = None,
     parent_task: str | None = None,
+    strategy: str = "input_first",
 ) -> ExecutionResult:
     # available_tools is injected by the caller — CLI, client, or agent upstream.
     # The kernel is blind: it does not know the catalog and never builds it.
@@ -30,7 +31,8 @@ def execute(
             # 1. COMPILE
             try:
                 exec_dstt, meta = t2e.compile(
-                    task, state, abstract_transition, available_tools=available_tools
+                    task, state, abstract_transition,
+                    available_tools=available_tools, strategy=strategy
                 )
             except Exception as e:
                 return _fail(execution_log, state, segments_completed, milestone_reached,
