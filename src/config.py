@@ -11,8 +11,9 @@ class Config(BaseSettings):
     )
 
     # Service URLs
-    task2plan_url: str = "http://localhost:8000"
-    transition2exec_url: str = "http://localhost:8002"
+    task2plan_url: str = "http://localhost:8005"
+    transition2exec_url: str = "http://localhost:8000"
+    transition2shell_url: str = "http://localhost:8002"
 
     # Default working directory for tool execution (run_shell_command, file ops)
     working_directory: Path = Path.cwd()

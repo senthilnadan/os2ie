@@ -28,6 +28,7 @@ def main() -> None:
     )
     parser.add_argument("--task2plan-url", default=config.task2plan_url)
     parser.add_argument("--transition2exec-url", default=config.transition2exec_url)
+    parser.add_argument("--transition2shell-url", default=config.transition2shell_url)
     args = parser.parse_args()
 
     try:
@@ -38,7 +39,7 @@ def main() -> None:
 
     t2p = Task2PlanClient(args.task2plan_url)
     t2e = Transition2ExecClient(args.transition2exec_url)
-    t2s = Transition2ShellClient(args.transition2exec_url)
+    t2s = Transition2ShellClient(args.transition2shell_url)
 
     # Plan
     print(f"→ planning: {args.task}")

@@ -22,6 +22,7 @@ def execute(
     execution_log: list[LogEntry] = []
     segments_completed = 0
     milestone_reached: list[str] = []
+    exec_seq = 0
 
     for segment_index, segment in enumerate(abstract_dstt.segments):
         for abstract_transition in segment.transitions:
@@ -85,8 +86,9 @@ def execute(
                     if grounded_key in state and grounded_key != abstract_key:
                         state[abstract_key] = state[grounded_key]
 
+                exec_seq += 1
                 execution_log.append(LogEntry(
-                    transition_id=grounded.id,
+                    transition_id=f"e{exec_seq}",
                     tool=grounded.tool,
                     inputs=grounded.inputs,
                     outputs=outputs,
