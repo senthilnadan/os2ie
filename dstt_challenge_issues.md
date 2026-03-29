@@ -70,17 +70,24 @@ The kernel returned `status: completed` but `state: {}` — the answer (which bo
 
 The following changes to transition2exec are needed before it can reliably handle the challenge tasks. These come from both observed failures and architectural review.
 
-### R1 — Output-first tool selection (highest priority)
+### R1 — Add `output_first` as a named grounding strategy
 
-**Current behaviour:** transition2exec selects tools by matching available inputs first, then checks outputs.
+**Current behaviour:** transition2exec uses a single strategy — match available inputs first, then check outputs (`input_first`).
 
 **Problem:** multiple tools share the same input signature. Example: `file_path` input matches `read_file`, `exists`, `delete_file`, `append_to_file` — wrong tool gets selected based on input proximity.
 
-**Fix:** reverse the selection priority:
-1. PRIMARY — match required abstract outputs against tool output signatures
-2. SECONDARY — confirm available inputs can satisfy tool inputs
+**Proposal:** add a second named strategy `output_first` alongside the existing one:
 
-Example: abstract output `text` → only `read_file` produces `text` → unambiguous. This alone eliminates wrong-tool substitution for the majority of catalog tools.
+| Strategy | Selection order |
+|----------|----------------|
+| `input_first` | match inputs → filter by outputs (current default) |
+| `output_first` | match required outputs → confirm inputs are satisfiable (new) |
+
+Example with `output_first`: abstract output `text` → only `read_file` produces `text` → unambiguous, no input proximity confusion.
+
+**Why a named strategy and not a replacement:** keeping both allows direct evaluation — run the same task set under each strategy and compare correctness. The DSTT challenge task suite is a ready-made benchmark for this comparison.
+
+**Request to transition2exec team:** implement `output_first` as an opt-in strategy, expose it via a request field (e.g. `"strategy": "output_first"`), and we will run the goalpost tasks under both to measure the difference.
 
 ---
 
