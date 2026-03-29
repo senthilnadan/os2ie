@@ -53,7 +53,7 @@ class Transition2ExecClient:
 
 class Transition2ShellClient:
     def __init__(self, base_url: str):
-        self._url = f"{base_url.rstrip('/')}/transition2shell"
+        self._url = f"{base_url.rstrip('/')}/transition2Shell"
 
     def compile(
         self,
