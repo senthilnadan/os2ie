@@ -29,6 +29,7 @@ class ExecuteRequest(BaseModel):
     task: str
     context: dict[str, Any] = {}
     strategy: str = "input_first"
+    available_tools: list[dict[str, Any]] | None = None
 
 
 @app.get("/health")
@@ -44,8 +45,10 @@ def execute_task(req: ExecuteRequest):
 
     abstract_dstt, meta = t2p.plan(req.task)
 
+    tools = req.available_tools if req.available_tools is not None else _available_tools
+
     result = execute(req.task, req.context, abstract_dstt, t2e,
-                     available_tools=_available_tools, t2s=t2s, strategy=req.strategy)
+                     available_tools=tools, t2s=t2s, strategy=req.strategy)
 
     return result.model_dump()
 
