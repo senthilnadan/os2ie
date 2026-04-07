@@ -1,0 +1,44 @@
+[
+  {
+    "id": "rr_01",
+    "question": "Why do most software projects fail to deliver on time and on budget?",
+    "known_answer": {
+      "expected_sub_questions": [
+        "What are the most common causes of scope creep?",
+        "How does estimation failure contribute to overruns?",
+        "What role does team communication play in project failure?",
+        "How do external dependencies cause delays?",
+        "What does research say about the base rate of software project failure?"
+      ],
+      "key_findings": [
+        "Requirements change faster than delivery cycles",
+        "Estimation is systematically optimistic (planning fallacy)",
+        "Communication breakdown compounds technical problems",
+        "The Standish CHAOS report consistently shows ~30% outright failure, ~50% challenged"
+      ],
+      "likely_contradiction": "answers about individual skill vs systemic factors may tension against each other"
+    },
+    "observe": "Did the model decompose into distinct, answerable sub-questions? Did cross-check find the tension between individual and systemic explanations? Is the report headline specific rather than generic?"
+  },
+  {
+    "id": "rr_02",
+    "question": "What makes a programming language achieve widespread adoption?",
+    "known_answer": {
+      "expected_sub_questions": [
+        "What role does a killer use-case or platform play?",
+        "How important is tooling and ecosystem at launch?",
+        "What is the effect of corporate or institutional backing?",
+        "How does syntax and learning curve affect adoption?",
+        "What historical examples show adoption patterns?"
+      ],
+      "key_findings": [
+        "Platform lock-in is the strongest single predictor (JavaScript/browser, Swift/iOS, Kotlin/Android)",
+        "Ecosystem grows adoption but rarely starts it",
+        "Corporate backing accelerates but does not guarantee (Dart vs TypeScript)",
+        "Learning curve matters more for hobbyist than professional adoption"
+      ],
+      "likely_contradiction": "ecosystem importance vs platform lock-in answers may appear contradictory — ecosystem is effect, not cause"
+    },
+    "observe": "Did the model produce sub-questions with specific, distinct answers? Did it catch the ecosystem-vs-platform distinction in cross-check? Does the key insight identify platform dependency as the root cause?"
+  }
+]

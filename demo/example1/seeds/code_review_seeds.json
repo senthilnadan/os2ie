@@ -1,0 +1,64 @@
+[
+  {
+    "id": "cr_01",
+    "code": "def count_words(text):\n    words = text.split(' ')\n    count = {}\n    for word in words:\n        if word in count:\n            count[word] += 1\n        else:\n            count[word] = 0\n    return count",
+    "known_answer": {
+      "intent": "count the frequency of each word in a string",
+      "critical_issues": [
+        "first occurrence of any word is counted as 0, not 1 — off-by-one in initialisation"
+      ],
+      "major_issues": [
+        "splitting on single space fails for multiple spaces or tabs",
+        "no handling of empty string input",
+        "case-sensitive counting treats 'Word' and 'word' as different"
+      ],
+      "minor_issues": [
+        "could use collections.Counter",
+        "no type hints"
+      ],
+      "correct_fix": "count[word] = 1 in the else branch"
+    },
+    "observe": "Did the model correctly identify the off-by-one as CRITICAL? Did it catch the whitespace splitting issue? Did fix suggestions show the corrected else branch? Did verification confirm the fix satisfies the intent?"
+  },
+  {
+    "id": "cr_02",
+    "code": "def find_max(numbers):\n    max_val = numbers[0]\n    for i in range(len(numbers)):\n        if numbers[i] > max_val:\n            max_val = numbers[i]\n    return max_val",
+    "known_answer": {
+      "intent": "find the maximum value in a list of numbers",
+      "critical_issues": [
+        "crashes with IndexError on empty list — numbers[0] raises before loop"
+      ],
+      "major_issues": [
+        "range(len(numbers)) with index access — should iterate directly",
+        "no type hints or input validation"
+      ],
+      "minor_issues": [
+        "could use built-in max()",
+        "variable name max_val shadows no built-in but max would"
+      ],
+      "correct_fix": "guard with 'if not numbers: return None' before accessing numbers[0]"
+    },
+    "observe": "Did the model flag the empty list crash as CRITICAL? Did it distinguish the style issue (range/len) from the bug? Did fix suggestions include the empty-list guard?"
+  },
+  {
+    "id": "cr_03",
+    "code": "import os\n\ndef delete_files(folder, extension):\n    for f in os.listdir(folder):\n        if f.endswith(extension):\n            os.remove(f)\n    print('Done')",
+    "known_answer": {
+      "intent": "delete all files with a given extension in a folder",
+      "critical_issues": [
+        "os.remove(f) uses bare filename — fails unless CWD matches folder",
+        "no existence check — listdir may raise FileNotFoundError if folder missing"
+      ],
+      "major_issues": [
+        "irreversible operation with no confirmation or dry-run mode",
+        "silent success message gives no count of deleted files"
+      ],
+      "minor_issues": [
+        "no type hints",
+        "should use pathlib for cross-platform safety"
+      ],
+      "correct_fix": "os.remove(os.path.join(folder, f)) — join folder and filename"
+    },
+    "observe": "Did the model catch the path join bug as CRITICAL? Did it flag the irreversible-with-no-dry-run as MAJOR? Did it suggest os.path.join in the fix?"
+  }
+]

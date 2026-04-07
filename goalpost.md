@@ -2,6 +2,7 @@ the following tasks when succesfully executed by taskExecutor is called reached 
 
 Objective 1. must be met with a 7b model 
 Stretch Objective 2. achieving the problems in dstt_challenge.md dstt_challenge_full.md 
+
 ## 1. 
 Create a file with numbers 1–10, then filter even numbers,
 then compute their sum, then write result to another file.

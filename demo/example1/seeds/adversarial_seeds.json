@@ -1,0 +1,32 @@
+[
+  {
+    "id": "as_01",
+    "topic": "AI should be regulated by governments",
+    "known_answer": {
+      "case_for_must_include": ["safety", "accountability", "public interest"],
+      "case_against_must_include": ["innovation", "overreach", "technical complexity"],
+      "synthesis_shape": "conditional — regulation is justified where harm is demonstrable, counterproductive where it targets capability rather than use"
+    },
+    "observe": "Did the model argue both sides with equal rigour? Did the synthesis avoid picking a side? Did the verdict state conditions rather than a winner?"
+  },
+  {
+    "id": "as_02",
+    "topic": "Open source software is superior to proprietary software",
+    "known_answer": {
+      "case_for_must_include": ["transparency", "community", "cost", "auditability"],
+      "case_against_must_include": ["support", "polish", "liability", "incentives"],
+      "synthesis_shape": "domain-dependent — open source wins on infrastructure and tooling; proprietary wins on end-user products requiring sustained support"
+    },
+    "observe": "Did the model avoid the trap of treating this as a universal claim? Did it find at least one strong steelman for proprietary software? Is the verdict conditional on use-case?"
+  },
+  {
+    "id": "as_03",
+    "topic": "Remote work is more productive than office work",
+    "known_answer": {
+      "case_for_must_include": ["focus", "autonomy", "commute elimination", "async"],
+      "case_against_must_include": ["collaboration", "onboarding", "spontaneous exchange", "isolation"],
+      "synthesis_shape": "person-and-task-dependent — individual deep work favours remote; collaborative creative work favours co-location"
+    },
+    "observe": "Did the weaknesses step identify that 'productivity' is underspecified? Did the synthesis distinguish task type and individual preference? Is the verdict falsifiable?"
+  }
+]

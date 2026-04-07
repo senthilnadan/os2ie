@@ -26,11 +26,31 @@ What is missing is narrow and well-defined.
 
 ---
 
-### Architects Question 
+### Architects View point
+ 
 I had not seen the kernal loop, yet.  all I know is we have a stub for testing purpose.. 
 our kernal only helps build dstt.  it doesnt execute DSTT. 
 
 The dependency is a DSTT, your assumption is wrong here. 
+
+I can see you are confusing it with the dstt build compile system with execute system.  
+
+while we need 1.  Model Client and 2. tools.  We dont need catalog 
+
+You have assumed user task to sophisticated design using template.. which is a facinating idea.  
+
+I really see your vision.   of a grand self prompt generating machine.  but it not practical.  
+
+We only use the custom home grown DSTT , bunch fo tools to prove DSTT can infact execute such a system.  
+
+The scope is limited to.   We are not building a beast in one shot. we are building it one function at a time. 
+
+1 Create Some DSTT, for each of the scenario you envisioned in the Proposal using DSTT 
+2 Execute a bunch of test prompts against a valid DSTT Kernal 
+  a. A valid DSTT Kernal is a DSTT Kernal with Ask and AskTemplate in its run time. 
+3 It is ok if we fail. but it must be a proof for DSTT Kernal.  and DSTT Kernal works as expected. 
+4 Post proof each DSTT can become a tool in a different system. but that is not the scope.
+
 
 ## What Needs to Be Built
 

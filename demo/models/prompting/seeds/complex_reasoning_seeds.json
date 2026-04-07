@@ -1,0 +1,137 @@
+[
+  {
+    "id": "cr_01",
+    "capability": "algebra_with_counting_and_generalisation",
+    "probe": "Given a system where A=B+C, B=2D, D=E². If E=3 and C is the number of vowels in the word 'ARCHITECTURE', perform all of the following:\n1. Find the final value of A.\n2. List every variable you solved and in what order.\n3. Express A as a single formula in terms of E, treating C as a constant.\n4. Rate the cognitive complexity of this task on a scale of 1-10.\nConstraint: state your final answers first, then show your working.",
+    "known_answer": {
+      "C": 4,
+      "D": 9,
+      "B": 18,
+      "A": 22,
+      "sequence": ["E", "C", "D", "B", "A"],
+      "formula": "A(E) = 2E² + 4",
+      "answer_position": "before working"
+    },
+    "observe": "Did all four answers appear before the working? Is C=4 (not 5)? Is the formula correct? Is the sequence complete?"
+  },
+  {
+    "id": "cr_02",
+    "capability": "constraint_satisfaction_with_proof",
+    "probe": "Find all two-digit numbers that satisfy every one of these constraints simultaneously:\n1. Divisible by both 3 and 4.\n2. The sum of digits is a prime number.\n3. The number is not a perfect square.\nFor each number found: confirm it passes all three constraints. Then state how many valid numbers exist.\nConstraint: list the valid numbers first, then prove each one.",
+    "known_answer": {
+      "candidates_div_12": [12, 24, 36, 48, 60, 72, 84, 96],
+      "digit_sum_prime": [12, 24, 48, 84],
+      "not_perfect_square": [12, 24, 48, 84],
+      "valid": [12, 24, 48, 84],
+      "count": 4
+    },
+    "observe": "Did the model list numbers first before proving? Did it check all three constraints per number? Did it correctly exclude 36 (digit sum 9, not prime)?"
+  },
+  {
+    "id": "cr_03",
+    "capability": "logic_chain_with_negation",
+    "probe": "Given these facts:\n- All mammals are warm-blooded.\n- All whales are mammals.\n- No fish are mammals.\n- Some sea creatures are fish.\n- All whales are sea creatures.\nAnswer all of the following:\n1. Are all whales warm-blooded? Why?\n2. Are any sea creatures warm-blooded? Prove it.\n3. Is it possible that some sea creatures are not warm-blooded? Give an example.\n4. Which single statement, if added, would make it impossible to determine whether fish are warm-blooded?\nConstraint: give yes/no answers first for each part, then the reasoning.",
+    "known_answer": {
+      "q1": "yes — whale → mammal → warm-blooded",
+      "q2": "yes — whales are sea creatures and are warm-blooded",
+      "q3": "yes — fish are sea creatures and are not mammals, so not necessarily warm-blooded",
+      "q4": "any statement that asserts some fish are warm-blooded without making them mammals"
+    },
+    "observe": "Did yes/no appear before reasoning for each part? Did the model correctly use transitivity for q1 and q2? Did it handle the negation in q3 without contradiction?"
+  },
+  {
+    "id": "cr_04",
+    "capability": "multi_step_dependency_with_branching",
+    "probe": "Start with N=3. Apply these steps in order:\nStep 1: if N is odd, multiply by 3 and add 1; if even, divide by 2.\nStep 2: apply the same rule to the result of Step 1.\nStep 3: apply the same rule to the result of Step 2.\nStep 4: apply the same rule to the result of Step 3.\nStep 5: apply the same rule to the result of Step 4.\nThen answer: did the sequence ever reach 1? What is the result after Step 5? List every intermediate value.",
+    "known_answer": {
+      "step1": 10,
+      "step2": 5,
+      "step3": 16,
+      "step4": 8,
+      "step5": 4,
+      "reached_1": false,
+      "sequence": [3, 10, 5, 16, 8, 4]
+    },
+    "observe": "Did the model correctly apply the odd/even branching at each step? Did it track intermediate values accurately? Did it correctly state 1 was not reached in 5 steps?"
+  },
+  {
+    "id": "cr_05",
+    "capability": "ambiguity_detection_and_resolution",
+    "probe": "A project manager says: 'Deliver the report to the client and the stakeholder before Friday using the approved template.'\nDo all of the following:\n1. Identify every ambiguity in this instruction.\n2. For each ambiguity, give two valid but contradictory interpretations.\n3. State which interpretation you would choose for each, and why.\n4. Rewrite the instruction so that all ambiguities are removed.\nConstraint: list all ambiguities first before interpreting or rewriting.",
+    "known_answer": {
+      "ambiguities": [
+        "is 'before Friday' inclusive or exclusive of Friday?",
+        "does 'using the approved template' apply to both deliveries or only the report?",
+        "are 'the client and the stakeholder' one person or two separate recipients?"
+      ],
+      "rewritten_example": "By end of Thursday, deliver the report — formatted using the approved template — separately to the client and to the stakeholder."
+    },
+    "observe": "Did ambiguities appear before interpretations? Did the model find at least 2 of the 3 ambiguities? Is the rewritten instruction genuinely unambiguous?"
+  },
+  {
+    "id": "cr_06",
+    "capability": "pattern_recognition_and_extrapolation",
+    "probe": "Observe this sequence: 2, 6, 12, 20, 30, 42.\nDo all of the following:\n1. Identify the pattern (express it as a formula for the nth term).\n2. Verify your formula against all six given terms.\n3. What is the 10th term?\n4. Which term is the first to exceed 200?\nConstraint: state the formula and both answers (10th term, first term > 200) before the verification.",
+    "known_answer": {
+      "formula": "n(n+1)",
+      "term_10": 110,
+      "first_exceeds_200": {"n": 15, "value": 240},
+      "verification": [2, 6, 12, 20, 30, 42]
+    },
+    "observe": "Did the formula and answers appear before verification? Is the formula n(n+1) or equivalent? Is the 10th term 110? Is the first term exceeding 200 correctly identified as 15th (240)?"
+  },
+  {
+    "id": "cr_07",
+    "capability": "structured_output_with_computation",
+    "probe": "For each of the following words — ELEPHANT, RIVER, MATHEMATICS, SKY — compute:\n- Number of letters\n- Number of vowels\n- Number of consonants\n- Whether the vowel count is prime\nPresent your results as a table with these exact columns: Word | Letters | Vowels | Consonants | Vowel Count Prime?\nThen write exactly one sentence identifying which word has the highest consonant-to-vowel ratio.\nConstraint: output the table first with no text before it.",
+    "known_answer": {
+      "ELEPHANT": {"letters": 8, "vowels": 3, "consonants": 5, "vowel_prime": true},
+      "RIVER": {"letters": 5, "vowels": 2, "consonants": 3, "vowel_prime": true},
+      "MATHEMATICS": {"letters": 11, "vowels": 4, "consonants": 7, "vowel_prime": false},
+      "SKY": {"letters": 3, "vowels": 1, "consonants": 2, "vowel_prime": false},
+      "highest_cv_ratio": "SKY (2:1)"
+    },
+    "observe": "Did the table appear first with no preamble? Are the counts correct? Is SKY correctly identified as highest consonant-to-vowel ratio (2.0) vs MATHEMATICS (1.75)?"
+  },
+  {
+    "id": "cr_08",
+    "capability": "conditional_reasoning_under_uncertainty",
+    "probe": "A bag contains 5 red balls, 3 blue balls, and 2 green balls. Answer all of the following:\n1. If you draw one ball, what is the probability it is not green?\n2. If the first ball drawn is red and not replaced, what is the probability the second ball is also red?\n3. If you must draw 2 balls, what combination gives the lowest probability, and what is that probability?\n4. If someone tells you 'the drawn ball is not red', what is the probability it is blue?\nConstraint: state each probability as a fraction and a percentage. Give all four answers first, then show working.",
+    "known_answer": {
+      "q1": "8/10 = 80%",
+      "q2": "4/9 ≈ 44.4%",
+      "q3": "two greens: 2/10 × 1/9 = 2/90 ≈ 2.2%",
+      "q4": "3/5 = 60%"
+    },
+    "observe": "Did all four answers appear before working? Are fractions correct? Did the model correctly compute conditional probability in q2 and q4 (updating the denominator)?"
+  },
+  {
+    "id": "cr_09",
+    "capability": "instruction_decomposition_and_sequencing",
+    "probe": "You are given this task: 'Analyse the sales data, identify the top 3 products by revenue, compare their growth rates over the last two quarters, and prepare a one-paragraph executive summary with a recommendation.'\nDo all of the following:\n1. Break this task into the minimum number of sequential steps where each step has exactly one output.\n2. For each step, identify what its input is and what its output is.\n3. Identify which steps could run in parallel.\n4. Identify which step is most likely to fail and why.\nConstraint: present the step breakdown first, then the parallel analysis, then the failure risk.",
+    "known_answer": {
+      "min_steps": 4,
+      "steps": [
+        "1. Load/parse sales data → structured dataset",
+        "2. Rank products by revenue → top 3 list",
+        "3. Compute growth rates for top 3 → growth rate table",
+        "4. Write executive summary with recommendation → paragraph"
+      ],
+      "parallelisable": "steps 2 and 3 could overlap if data is pre-loaded",
+      "most_likely_to_fail": "step 3 — growth rate requires two quarters of data which may be missing or inconsistent"
+    },
+    "observe": "Did the step breakdown appear before parallel analysis and failure risk? Did the model produce exactly one output per step? Did it correctly identify data availability as the failure point?"
+  },
+  {
+    "id": "cr_10",
+    "capability": "self_referential_reasoning",
+    "probe": "Consider this statement: 'This sentence is false.'\nDo all of the following:\n1. Explain why this statement creates a paradox.\n2. Give one real-world system where this type of self-referential contradiction causes a practical problem.\n3. Describe the standard engineering solution used in that system.\n4. Rate how difficult it would be for an AI language model to detect this type of paradox reliably, on a scale of 1-10, and justify your rating.\nConstraint: give the difficulty rating and real-world system name first, then explanations.",
+    "known_answer": {
+      "paradox": "if true it must be false; if false it must be true — liar's paradox",
+      "real_world_example": "type systems, formal logic checkers, or self-referential data schemas",
+      "solution": "Tarski's hierarchy of metalanguages, or simply prohibiting self-reference in the grammar",
+      "difficulty_range": "6-9 — models pattern-match structure but struggle with true logical grounding"
+    },
+    "observe": "Did the difficulty rating and system name appear first? Did the model correctly name the liar's paradox? Did it identify a real engineering system (not a hypothetical)? Is the difficulty rating justified rather than arbitrary?"
+  }
+]
